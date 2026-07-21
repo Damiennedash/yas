@@ -4,9 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard QoE ARCEP — Yas Togo</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='32' fill='%23FFC800'/><path d='M24 18L48 32L24 46V18Z' fill='%230E1B3D'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <style>
 :root{
   --navy:#0E1B3D;
@@ -138,106 +141,196 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
 .modal-steps{ font-size:12.5px; color:#3A4363; background:#F7F8FC; border-radius:10px; padding:12px 14px; margin:12px 0;}
 .modal-steps li{ margin-bottom:5px; }
 
+/* ================= Sidebar layout (v2) ================= */
+.app-shell{ display:grid; grid-template-columns:230px 1fr; min-height:100vh; }
+@media(max-width:900px){ .app-shell{ grid-template-columns:74px 1fr; } .side-label{display:none;} .sidebar .brand-text{display:none;} }
+
+.sidebar{
+  background: linear-gradient(180deg, var(--navy) 0%, var(--navy2) 100%);
+  color:#fff; padding:20px 14px; display:flex; flex-direction:column; gap:6px;
+  position:sticky; top:0; height:100vh;
+}
+.sidebar .brand{ display:flex; align-items:center; gap:10px; padding:0 6px 20px; }
+.sidebar .brand-text h1{ font-size:15px; margin:0; }
+.sidebar .brand-text span{ font-size:10.5px; color:#C7CEEB; }
+.navitem{
+  display:flex; align-items:center; gap:12px; padding:11px 12px; border-radius:10px;
+  color:#C7CEEB; font-size:13.5px; font-weight:600; cursor:pointer; transition:.15s;
+}
+.navitem .ic{ width:20px; text-align:center; font-size:15px; }
+.navitem:hover{ background:rgba(255,255,255,.08); color:#fff; }
+.navitem.active{ background:var(--yellow); color:var(--navy); }
+.sidebar-bottom{ margin-top:auto; display:flex; flex-direction:column; gap:6px; }
+.sidebar-bottom .navitem{ font-size:12.5px; }
+
+.content{ padding:20px 26px 60px; max-width:1400px; }
+.topbar2{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:18px; }
+.topbar2 h2{ margin:0; font-size:20px; }
+.topbar2 .filters{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.topbar2 select{ background:#fff; color:var(--navy); border:1px solid var(--border); }
+.topbar2 .chips{ background:#fff; border:1px solid var(--border); }
+.topbar2 .chip{ color:var(--navy); }
+.topbar2 .chip.active{ background:var(--navy); color:#fff; }
+.topbar2 .icon-btn{ background:#fff; border:1px solid var(--border); color:var(--navy); }
+
+.view{ display:none; }
+.view.active{ display:block; }
+
+/* ---- Map ---- */
+#map{ height:520px; border-radius:14px; }
+.map-legend{ display:flex; gap:16px; align-items:center; margin-top:10px; font-size:12.5px; color:var(--gray);}
+.map-legend .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:5px; }
+
+/* ---- Alerts view ---- */
+.alert-list.big .alert-card{ cursor:pointer; }
+.alert-card:hover{ box-shadow:0 4px 14px rgba(14,27,61,.08); }
+
+.detail-modal .modal{ max-width:620px; }
+.detail-kpi-list{ display:flex; flex-direction:column; gap:8px; margin:14px 0; max-height:220px; overflow:auto;}
+.detail-kpi-row{ display:flex; justify-content:space-between; gap:10px; background:#FCEAE8; border:1px solid #F3C9C5; border-radius:8px; padding:8px 12px; font-size:12.5px;}
+.detail-kpi-row .kname{ font-weight:700; color:var(--crit); }
+.detail-kpi-row .sug{ color:#3A4363; }
+.detail-head{ display:flex; justify-content:space-between; align-items:flex-start; }
+.detail-pct{ font-size:26px; font-weight:800; }
+
 </style>
 </head>
 <body>
 
-<header class="topbar">
-  <div class="topbar-inner">
+<div class="app-shell">
+  <aside class="sidebar">
     <div class="brand">
       <div class="logo-mark">
         <svg width="14" height="16" viewBox="0 0 14 16" fill="none"><path d="M0 0L14 8L0 16V0Z" fill="#0E1B3D"/></svg>
       </div>
       <div class="brand-text">
-        <h1>Plateforme QoE ARCEP</h1>
-        <span>Yas Togo · Suivi des campagnes Drive Test</span>
+        <h1>Yas Togo</h1>
+        <span>QoE ARCEP</span>
       </div>
     </div>
-    <div class="controls">
-      <select id="campSelect" title="Campagne"></select>
-      <select id="regionSelect" title="Région"></select>
-      <div class="chips">
-        <div class="chip" data-zone="ALL">Tout le pays</div>
-        <div class="chip" data-zone="GL">Grand Lomé</div>
-        <div class="chip" data-zone="HL">Hors Lomé</div>
+
+    <div class="navitem active" data-view="overview"><span class="ic">🏠</span><span class="side-label">Vue d'ensemble</span></div>
+    <div class="navitem" data-view="operational"><span class="ic">🧪</span><span class="side-label">Vue opérationnelle</span></div>
+    <div class="navitem" data-view="geo"><span class="ic">🗺️</span><span class="side-label">Vue géographique</span></div>
+    <div class="navitem" data-view="alerts"><span class="ic">🔔</span><span class="side-label">Alertes</span><span class="count" id="alertCountNav" style="margin-left:auto;">0</span></div>
+
+    <div class="sidebar-bottom">
+      <div class="navitem" id="settingsBtnSide"><span class="ic">⚙</span><span class="side-label">Connecter Sheet</span></div>
+    </div>
+  </aside>
+
+  <div class="content">
+
+    <div class="topbar2">
+      <h2 id="pageTitle">Vue d'ensemble</h2>
+      <div class="filters">
+        <select id="campSelect" title="Campagne"></select>
+        <select id="regionSelect" title="Région"></select>
+        <div class="chips">
+          <div class="chip" data-zone="ALL">Tout le pays</div>
+          <div class="chip" data-zone="GL">Grand Lomé</div>
+          <div class="chip" data-zone="HL">Hors Lomé</div>
+        </div>
+        <button class="icon-btn" id="refreshBtn" title="Actualiser">⟳</button>
+        <button class="icon-btn" id="settingsBtn" title="Connecter Google Sheet">⚙</button>
       </div>
-      <button class="icon-btn" id="refreshBtn" title="Actualiser">⟳</button>
-      <button class="icon-btn" id="settingsBtn" title="Connecter Google Sheet">⚙</button>
     </div>
+
+    <!-- ===== VIEW: OVERVIEW ===== -->
+    <section class="view active" id="view-overview">
+      <div class="kpi-grid">
+        <div class="kcard accent">
+          <div class="label">Taux de conformité global</div>
+          <div class="num" id="cardAvg">—</div>
+          <div id="cardAvgDelta"></div>
+        </div>
+        <div class="kcard ok">
+          <div class="label">Localités conformes (≥75%)</div>
+          <div class="num" id="cardOk">—</div>
+        </div>
+        <div class="kcard warn">
+          <div class="label">Localités en vigilance</div>
+          <div class="num" id="cardWarn">—</div>
+        </div>
+        <div class="kcard crit">
+          <div class="label">Localités critiques (&lt;50%)</div>
+          <div class="num" id="cardCrit">—</div>
+        </div>
+        <div class="kcard">
+          <div class="label">Localités analysées</div>
+          <div class="num" id="cardTotal">—</div>
+        </div>
+      </div>
+
+      <div class="section-title">🔔 Alertes actives <span class="count" id="alertCount">0</span></div>
+      <div class="alert-list" id="alertListSummary"></div>
+
+      <div class="section-title">📊 Évolution — <span id="lastCampLabel"></span></div>
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Évolution du taux de conformité entre campagnes</h3>
+          <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Conformité par service (campagne sélectionnée)</h3>
+          <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VIEW: OPERATIONAL ===== -->
+    <section class="view" id="view-operational">
+      <div class="section-title">🧪 Détail des 16 KPI ARCEP — <span id="lastCampLabel2"></span></div>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th>Service</th><th>KPI</th><th>Libellé</th><th>Valeur moyenne</th><th>Seuil ARCEP</th><th>Conformité</th><th></th>
+            </tr></thead>
+            <tbody id="kpiTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VIEW: GEO ===== -->
+    <section class="view" id="view-geo">
+      <div class="section-title">🗺️ Carte des localités (Togo)</div>
+      <div class="chart-card">
+        <div id="map"></div>
+        <div class="map-legend">
+          <span><span class="dot" style="background:#1E9E6B;"></span>Conforme (≥75%)</span>
+          <span><span class="dot" style="background:#F5A623;"></span>Vigilance (50-75%)</span>
+          <span><span class="dot" style="background:#E1483D;"></span>Critique (&lt;50%)</span>
+        </div>
+      </div>
+
+      <div class="section-title">Localités — détail <span class="count" id="locCount">0</span></div>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table>
+            <thead><tr>
+              <th>Localité</th><th>Région</th><th>Zone</th><th>KQI conformes</th><th>% conformité</th><th>Évolution</th><th>Statut</th>
+            </tr></thead>
+            <tbody id="locTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== VIEW: ALERTS ===== -->
+    <section class="view" id="view-alerts">
+      <div class="section-title">🔔 Toutes les alertes — cliquez pour le détail et les suggestions</div>
+      <div class="alert-list big" id="alertListFull"></div>
+    </section>
+
+    <footer>
+      Source : <span id="sourceNote">Données intégrées (snapshot)</span> · Protocole 16 KPI ARCEP (Voix / Data 3G / Data 4G) · Plateforme interne Yas Togo — usage réglementaire QoS/QoE
+    </footer>
   </div>
-</header>
+</div>
 
-<main>
-
-  <div class="kpi-grid">
-    <div class="kcard accent">
-      <div class="label">Taux de conformité global</div>
-      <div class="num" id="cardAvg">—</div>
-      <div id="cardAvgDelta"></div>
-    </div>
-    <div class="kcard ok">
-      <div class="label">Localités conformes (≥75%)</div>
-      <div class="num" id="cardOk">—</div>
-    </div>
-    <div class="kcard warn">
-      <div class="label">Localités en vigilance</div>
-      <div class="num" id="cardWarn">—</div>
-    </div>
-    <div class="kcard crit">
-      <div class="label">Localités critiques (&lt;50%)</div>
-      <div class="num" id="cardCrit">—</div>
-    </div>
-    <div class="kcard">
-      <div class="label">Localités analysées</div>
-      <div class="num" id="cardTotal">—</div>
-    </div>
-  </div>
-
-  <div class="section-title">🔔 Alertes actives <span class="count" id="alertCount">0</span></div>
-  <div class="alert-list" id="alertList"></div>
-
-  <div class="section-title">📊 Vue exécutive — <span id="lastCampLabel"></span></div>
-  <div class="charts-row">
-    <div class="chart-card">
-      <h3>Évolution du taux de conformité entre campagnes</h3>
-      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
-    </div>
-    <div class="chart-card">
-      <h3>Conformité par service (campagne sélectionnée)</h3>
-      <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
-    </div>
-  </div>
-
-  <div class="section-title">🧪 Vue opérationnelle — Détail des 16 KPI ARCEP</div>
-  <div class="table-card">
-    <div class="table-scroll">
-      <table>
-        <thead><tr>
-          <th>Service</th><th>KPI</th><th>Libellé</th><th>Valeur moyenne</th><th>Seuil ARCEP</th><th>Conformité</th><th></th>
-        </tr></thead>
-        <tbody id="kpiTableBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-  <div class="section-title">🗺️ Vue géographique — Localités (triées du plus critique au plus conforme) <span class="count" id="locCount">0</span></div>
-  <div class="table-card">
-    <div class="table-scroll">
-      <table>
-        <thead><tr>
-          <th>Localité</th><th>Région</th><th>Zone</th><th>KQI conformes</th><th>% conformité</th><th>Évolution</th><th>Statut</th>
-        </tr></thead>
-        <tbody id="locTableBody"></tbody>
-      </table>
-    </div>
-  </div>
-
-</main>
-
-<footer>
-  Source : <span id="sourceNote">Données intégrées (snapshot)</span> · Protocole 16 KPI ARCEP (Voix / Data 3G / Data 4G) · Plateforme interne Yas Togo — usage réglementaire QoS/QoE
-</footer>
-
+<!-- Settings modal -->
 <div class="modal-backdrop" id="settingsModal">
   <div class="modal">
     <h3>⚙ Connecter le Google Sheet</h3>
@@ -254,6 +347,27 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
       <button class="btn ghost" id="closeModal">Fermer</button>
     </div>
     <div class="status" id="connectStatus"></div>
+  </div>
+</div>
+
+<!-- Alert detail modal -->
+<div class="modal-backdrop detail-modal" id="alertDetailModal">
+  <div class="modal">
+    <div class="detail-head">
+      <div>
+        <h3 id="adLoc">—</h3>
+        <p id="adReg" style="margin:2px 0 0;"></p>
+      </div>
+      <div style="text-align:right;">
+        <div class="detail-pct" id="adPct">—</div>
+        <div id="adDelta"></div>
+      </div>
+    </div>
+    <div class="section-title" style="margin:16px 0 4px; font-size:13px;">KPI en échec &amp; suggestions</div>
+    <div class="detail-kpi-list" id="adKpiList"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="closeAlertDetail">Fermer</button>
+    </div>
   </div>
 </div>
 
@@ -278,19 +392,43 @@ window.__KPI_REF__ = {
   "4G-TD4": {"service":"DATA 4G","label":"Succès transfert descendant","seuil":"≥ 99 %","unit":"%","dir":"high","scale":100}
 }
 ;
+window.__SUGGESTIONS__ = {
+  "SV1": "Signalisation lente : vérifier le dimensionnement VLR/HLR et le paging sur le site.",
+  "SV2": "Échecs d'appel : analyser la couverture radio et les taux de blocage ; envisager un ajout de capacité voix.",
+  "SV3": "Qualité vocale faible : vérifier les codecs voix et la qualité du lien de transmission (backhaul).",
+  "SV4": "Coupures d'appel : analyser les handovers et les interférences ; vérifier le plan de voisinage des cellules.",
+  "3G-NW1": "Échecs de téléchargement 3G : vérifier la congestion data et la capacité PDP/bearer.",
+  "3G-NW2": "Chargement web lent en 3G : optimiser la latence backhaul et vérifier le peering Internet.",
+  "3G-TD1": "Débit montant 3G faible : vérifier interférences, tilt antenne et configuration MIMO.",
+  "3G-TD2": "Débit descendant 3G faible : envisager un ajout de capacité (bande passante/secteur).",
+  "3G-TD3": "Transferts montants instables en 3G : vérifier la stabilité de la liaison et les retransmissions.",
+  "3G-TD4": "Transferts descendants instables en 3G : vérifier la qualité du signal et les interférences.",
+  "4G-NW1": "Échecs de téléchargement 4G : vérifier la congestion data et la capacité du site.",
+  "4G-NW2": "Chargement web lent en 4G : optimiser la latence backhaul et le peering Internet.",
+  "4G-TD1": "Débit montant 4G faible : vérifier interférences, tilt antenne et configuration MIMO.",
+  "4G-TD2": "Débit descendant 4G faible : envisager un ajout de capacité ou une extension de bande.",
+  "4G-TD3": "Transferts montants instables en 4G : vérifier la stabilité de la liaison.",
+  "4G-TD4": "Transferts descendants instables en 4G : vérifier la qualité du signal et les interférences."
+}
+;
 </script>
 <script>
 /* ===== State ===== */
 let RECORDS = window.__EMBEDDED_DATA__;
 const KPI_REF = window.__KPI_REF__;
+const SUGGESTIONS = window.__SUGGESTIONS__;
 const KPI_ORDER = Object.keys(KPI_REF);
 
 let state = {
-  campN: null,       // selected campaign number
+  campN: null,
   region: 'ALL',
   zone: 'ALL',
-  sourceLabel: 'Données intégrées (snapshot)'
+  sourceLabel: 'Données intégrées (snapshot)',
+  view: 'overview'
 };
+
+let map = null;
+let markerLayer = null;
 
 const campaignsAvailable = () => [...new Set(RECORDS.map(r=>r.campN))].sort((a,b)=>a-b);
 const campLabel = (n) => (RECORDS.find(r=>r.campN===n)||{}).camp || n;
@@ -299,6 +437,11 @@ function badge(pct){
   if(pct>=75) return {cls:'ok', txt:'Conforme'};
   if(pct>=50) return {cls:'warn', txt:'Vigilance'};
   return {cls:'crit', txt:'Critique'};
+}
+function badgeColor(pct){
+  if(pct>=75) return '#1E9E6B';
+  if(pct>=50) return '#F5A623';
+  return '#E1483D';
 }
 
 function fmtDelta(d){
@@ -316,7 +459,6 @@ function filtered(campN){
     (state.zone==='ALL' || r.zone===state.zone)
   );
 }
-
 function prevCampN(campN){
   const list = campaignsAvailable();
   const idx = list.indexOf(campN);
@@ -364,17 +506,21 @@ function localityDelta(loc, campN){
   return curRec.pct - prevRec.pct;
 }
 
+function failingKPIs(rec){
+  return KPI_ORDER.filter(code => rec.kpi[code] && rec.kpi[code][1]===0);
+}
+
 function computeAlerts(campN, recs){
   const alerts = [];
   const prev = prevCampN(campN);
   recs.forEach(r=>{
     if(r.pct < 50){
-      alerts.push({sev:'crit', loc:r.loc, reg:r.reg, msg:`Localité critique : ${r.pct.toFixed(0)}% de conformité ARCEP`});
+      alerts.push({sev:'crit', rec:r, msg:`Localité critique : ${r.pct.toFixed(0)}% de conformité ARCEP`});
     }
     if(prev!==null){
       const d = localityDelta(r.loc, campN);
       if(d!==null && d<=-15){
-        alerts.push({sev:'drop', loc:r.loc, reg:r.reg, msg:`Dégradation forte : ${d.toFixed(0)} pts vs campagne précédente`});
+        alerts.push({sev:'drop', rec:r, msg:`Dégradation forte : ${d.toFixed(0)} pts vs campagne précédente`});
       }
     }
   });
@@ -396,21 +542,17 @@ function render(){
   const prevStats = prev!==null ? globalStats(prevRecs) : null;
   const delta = prevStats ? stats.avg - prevStats.avg : null;
 
-  // Campaign selector
   const sel = document.getElementById('campSelect');
   sel.innerHTML = camps.map(c=>`<option value="${c}" ${c===campN?'selected':''}>${campLabel(c)}</option>`).join('');
 
-  // Region selector
   const regs = ['ALL', ...new Set(RECORDS.map(r=>r.reg))].sort((a,b)=> a==='ALL'?-1:b==='ALL'?1:a.localeCompare(b));
   const regSel = document.getElementById('regionSelect');
   regSel.innerHTML = regs.map(r=>`<option value="${r}" ${r===state.region?'selected':''}>${r==='ALL'?'Toutes régions':r}</option>`).join('');
 
-  // Zone chips active state
   document.querySelectorAll('.chip[data-zone]').forEach(ch=>{
     ch.classList.toggle('active', ch.dataset.zone===state.zone);
   });
 
-  // KPI cards
   document.getElementById('cardAvg').textContent = stats.avg.toFixed(1)+'%';
   document.getElementById('cardAvgDelta').innerHTML = delta!==null ? fmtDelta(delta) : '<span class="delta flat">1ère campagne</span>';
   document.getElementById('cardOk').textContent = stats.ok;
@@ -418,24 +560,10 @@ function render(){
   document.getElementById('cardCrit').textContent = stats.crit;
   document.getElementById('cardTotal').textContent = stats.n;
 
-  // Alerts
   const alerts = computeAlerts(campN, recs);
-  const alertBox = document.getElementById('alertList');
-  document.getElementById('alertCount').textContent = alerts.length;
-  if(alerts.length===0){
-    alertBox.innerHTML = `<div class="alert-empty">Aucune alerte active pour cette sélection — réseau conforme au protocole ARCEP.</div>`;
-  } else {
-    alertBox.innerHTML = alerts.slice(0,12).map(a=>`
-      <div class="alert-card ${a.sev}">
-        <div class="alert-top"><strong>${a.loc}</strong><span class="alert-reg">${a.reg}</span></div>
-        <div class="alert-msg">${a.msg}</div>
-      </div>`).join('');
-    if(alerts.length>12){
-      alertBox.innerHTML += `<div class="alert-more">+ ${alerts.length-12} autre(s) alerte(s) — voir le tableau des localités ci-dessous.</div>`;
-    }
-  }
+  renderAlertSummary(alerts);
+  renderAlertsView(alerts);
 
-  // KPI table
   const kt = kpiTable(recs);
   const groups = ['VOIX','DATA 3G','DATA 4G'];
   document.getElementById('kpiTableBody').innerHTML = groups.map(g=>{
@@ -447,14 +575,11 @@ function render(){
         <td>${k.label}</td>
         <td class="mono">${k.avgVal!==null? k.avgVal.toFixed(k.unit==='%'||k.unit==='/5'?2: (k.unit==='s'?3:2)) : '—'} ${k.unit}</td>
         <td class="mono seuil">${k.seuil}</td>
-        <td>
-          <div class="bar-track"><div class="bar-fill ${badge(k.confRate).cls}" style="width:${k.confRate}%"></div></div>
-        </td>
+        <td><div class="bar-track"><div class="bar-fill ${badge(k.confRate).cls}" style="width:${k.confRate}%"></div></div></td>
         <td class="mono bar-pct">${k.confRate.toFixed(0)}%</td>
       </tr>`).join('');
   }).join('');
 
-  // Locality table (worst first)
   const sorted = [...recs].sort((a,b)=>a.pct-b.pct);
   document.getElementById('locTableBody').innerHTML = sorted.map(r=>{
     const b = badge(r.pct);
@@ -471,34 +596,82 @@ function render(){
   }).join('');
   document.getElementById('locCount').textContent = sorted.length;
 
-  renderCharts(stats, recs);
+  renderCharts(recs);
+  renderMap(recs);
 
   document.getElementById('sourceNote').textContent = state.sourceLabel;
   document.getElementById('lastCampLabel').textContent = campLabel(campN);
+  document.getElementById('lastCampLabel2').textContent = campLabel(campN);
 }
 
-function renderCharts(stats, recs){
+function renderAlertSummary(alerts){
+  document.getElementById('alertCount').textContent = alerts.length;
+  document.getElementById('alertCountNav').textContent = alerts.length;
+  const box = document.getElementById('alertListSummary');
+  if(alerts.length===0){
+    box.innerHTML = `<div class="alert-empty">Aucune alerte active — réseau conforme au protocole ARCEP pour cette sélection.</div>`;
+  } else {
+    box.innerHTML = alerts.slice(0,6).map((a,i)=>alertCardHTML(a,i)).join('') +
+      (alerts.length>6? `<div class="alert-more">+ ${alerts.length-6} autre(s) — voir l'onglet Alertes.</div>` : '');
+    box.querySelectorAll('.alert-card').forEach(card=>{
+      card.addEventListener('click', ()=> openAlertDetail(alerts[parseInt(card.dataset.idx,10)]));
+    });
+  }
+}
+
+function renderAlertsView(alerts){
+  const box = document.getElementById('alertListFull');
+  if(alerts.length===0){
+    box.innerHTML = `<div class="alert-empty">Aucune alerte active — réseau conforme au protocole ARCEP pour cette sélection.</div>`;
+  } else {
+    box.innerHTML = alerts.map((a,i)=>alertCardHTML(a,i)).join('');
+    box.querySelectorAll('.alert-card').forEach(card=>{
+      card.addEventListener('click', ()=> openAlertDetail(alerts[parseInt(card.dataset.idx,10)]));
+    });
+  }
+}
+
+function alertCardHTML(a, idx){
+  return `
+    <div class="alert-card ${a.sev}" data-idx="${idx}">
+      <div class="alert-top"><strong>${a.rec.loc}</strong><span class="alert-reg">${a.rec.reg}</span></div>
+      <div class="alert-msg">${a.msg}</div>
+    </div>`;
+}
+
+function openAlertDetail(a){
+  const rec = a.rec;
+  const fails = failingKPIs(rec);
+  const modal = document.getElementById('alertDetailModal');
+  document.getElementById('adLoc').textContent = rec.loc;
+  document.getElementById('adReg').textContent = `${rec.reg} · ${rec.zone==='GL'?'Grand Lomé':'Hors Lomé'}`;
+  document.getElementById('adPct').textContent = rec.pct.toFixed(1)+'%';
+  document.getElementById('adPct').style.color = badgeColor(rec.pct);
+  const d = localityDelta(rec.loc, rec.campN);
+  document.getElementById('adDelta').innerHTML = fmtDelta(d);
+  document.getElementById('adKpiList').innerHTML = fails.length ? fails.map(code=>`
+    <div class="detail-kpi-row">
+      <div><span class="kname">${code}</span> — ${KPI_REF[code].label}</div>
+      <div class="sug">${SUGGESTIONS[code]}</div>
+    </div>`).join('') : '<div style="font-size:12.5px;color:var(--gray);">Aucun KPI en échec direct — alerte liée à une dégradation de tendance.</div>';
+  modal.classList.add('show');
+}
+
+function renderCharts(recs){
   const trend = trendSeries();
   const ctx1 = document.getElementById('trendChart');
   if(charts.trend) charts.trend.destroy();
   charts.trend = new Chart(ctx1, {
     type:'line',
-    data:{
-      labels: trend.labels,
-      datasets:[
-        {label:'National', data: trend.national, borderColor:'#0E1B3D', backgroundColor:'rgba(14,27,61,0.08)', borderWidth:3, tension:0.35, pointRadius:4, pointBackgroundColor:'#0E1B3D', fill:true},
-        {label:'Grand Lomé', data: trend.gl, borderColor:'#FFC800', backgroundColor:'transparent', borderWidth:2.5, tension:0.35, pointRadius:3, borderDash:[], pointBackgroundColor:'#FFC800'},
-        {label:'Hors Lomé', data: trend.hl, borderColor:'#E1483D', backgroundColor:'transparent', borderWidth:2, tension:0.35, pointRadius:3, borderDash:[6,3], pointBackgroundColor:'#E1483D'}
-      ]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
+    data:{ labels: trend.labels, datasets:[
+      {label:'National', data: trend.national, borderColor:'#0E1B3D', backgroundColor:'rgba(14,27,61,0.08)', borderWidth:3, tension:0.35, pointRadius:4, pointBackgroundColor:'#0E1B3D', fill:true},
+      {label:'Grand Lomé', data: trend.gl, borderColor:'#FFC800', backgroundColor:'transparent', borderWidth:2.5, tension:0.35, pointRadius:3, pointBackgroundColor:'#FFC800'},
+      {label:'Hors Lomé', data: trend.hl, borderColor:'#E1483D', backgroundColor:'transparent', borderWidth:2, tension:0.35, pointRadius:3, borderDash:[6,3], pointBackgroundColor:'#E1483D'}
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
       plugins:{legend:{position:'bottom', labels:{font:{family:'Inter', size:11}, usePointStyle:true, boxWidth:8}}},
-      scales:{
-        y:{min:0, max:100, ticks:{callback:v=>v+'%', font:{family:'Inter',size:10}}, grid:{color:'#EEF0F5'}},
-        x:{ticks:{font:{family:'Inter',size:10}}, grid:{display:false}}
-      }
-    }
+      scales:{ y:{min:0, max:100, ticks:{callback:v=>v+'%', font:{family:'Inter',size:10}}, grid:{color:'#EEF0F5'}},
+        x:{ticks:{font:{family:'Inter',size:10}}, grid:{display:false}} } }
   });
 
   const kt = kpiTable(recs);
@@ -511,24 +684,36 @@ function renderCharts(stats, recs){
   if(charts.cat) charts.cat.destroy();
   charts.cat = new Chart(ctx2, {
     type:'bar',
-    data:{
-      labels: cats,
-      datasets:[{
-        label:'Taux de conformité (%)',
-        data: catAvg,
-        backgroundColor: catAvg.map(v=> v>=75?'#1E9E6B': v>=50?'#F5A623':'#E1483D'),
-        borderRadius:8,
-        maxBarThickness:70
-      }]
-    },
-    options:{
-      responsive:true, maintainAspectRatio:false,
+    data:{ labels: cats, datasets:[{ label:'Taux de conformité (%)', data: catAvg,
+      backgroundColor: catAvg.map(v=> v>=75?'#1E9E6B': v>=50?'#F5A623':'#E1483D'), borderRadius:8, maxBarThickness:70 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
       plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+'%'}}},
-      scales:{
-        y:{min:0,max:100, ticks:{callback:v=>v+'%', font:{family:'Inter',size:10}}, grid:{color:'#EEF0F5'}},
-        x:{ticks:{font:{family:'Inter',size:11, weight:'600'}}, grid:{display:false}}
-      }
-    }
+      scales:{ y:{min:0,max:100, ticks:{callback:v=>v+'%', font:{family:'Inter',size:10}}, grid:{color:'#EEF0F5'}},
+        x:{ticks:{font:{family:'Inter',size:11, weight:'600'}}, grid:{display:false}} } }
+  });
+}
+
+function ensureMap(){
+  if(map) return;
+  map = L.map('map', {scrollWheelZoom:false}).setView([8.2, 1.1], 7.2);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+  }).addTo(map);
+  markerLayer = L.layerGroup().addTo(map);
+}
+
+function renderMap(recs){
+  if(typeof L === 'undefined') return;
+  ensureMap();
+  markerLayer.clearLayers();
+  recs.forEach(r=>{
+    if(isNaN(r.lat) || isNaN(r.lon)) return;
+    const color = badgeColor(r.pct);
+    const m = L.circleMarker([r.lat, r.lon], {
+      radius: 6, fillColor: color, color:'#fff', weight:1.5, fillOpacity:0.9
+    });
+    m.bindPopup(`<strong>${r.loc}</strong><br>${r.reg} · ${r.zone==='GL'?'Grand Lomé':'Hors Lomé'}<br>Conformité : <b style="color:${color}">${r.pct.toFixed(1)}%</b><br>${r.conf}/${r.tot} KQI conformes`);
+    m.addTo(markerLayer);
   });
 }
 
@@ -557,26 +742,19 @@ function splitCSVLine(line){
   res.push(cur);
   return res;
 }
-
 function rowsToRecords(rows){
-  const kpiCols = KPI_ORDER;
   return rows.map(row=>{
     const kpi = {};
-    kpiCols.forEach(code=>{
+    KPI_ORDER.forEach(code=>{
       const raw = parseFloat(row[code]);
       const conf = parseInt(row['Conformité '+code], 10);
       kpi[code] = [isNaN(raw)?null:raw, isNaN(conf)?0:conf];
     });
     return {
-      camp: row['Campagne'],
-      campN: parseInt(row['N_Campagne'],10),
-      reg: row['Région'],
-      zone: (row['Zone']||'').toUpperCase().includes('GRAND') ? 'GL':'HL',
-      loc: row['Localité'],
-      lat: parseFloat(row['Lat']), lon: parseFloat(row['Lon']),
-      pct: parseFloat(row['Pct_Conformite']),
-      conf: parseInt(row['KQI_Conformes'],10),
-      tot: parseInt(row['KQI_Total'],10),
+      camp: row['Campagne'], campN: parseInt(row['N_Campagne'],10),
+      reg: row['Région'], zone: (row['Zone']||'').toUpperCase().includes('GRAND') ? 'GL':'HL',
+      loc: row['Localité'], lat: parseFloat(row['Lat']), lon: parseFloat(row['Lon']),
+      pct: parseFloat(row['Pct_Conformite']), conf: parseInt(row['KQI_Conformes'],10), tot: parseInt(row['KQI_Total'],10),
       kpi
     };
   }).filter(r=>r.loc && !isNaN(r.campN));
@@ -585,16 +763,14 @@ function rowsToRecords(rows){
 async function connectSheet(url){
   const statusEl = document.getElementById('connectStatus');
   try{
-    statusEl.textContent = 'Chargement…';
-    statusEl.className = 'status loading';
+    statusEl.textContent = 'Chargement…'; statusEl.className = 'status loading';
     const res = await fetch(url);
     if(!res.ok) throw new Error('HTTP '+res.status);
     const text = await res.text();
     const rows = parseCSV(text);
     const recs = rowsToRecords(rows);
     if(recs.length===0) throw new Error('Aucune ligne valide trouvée');
-    RECORDS = recs;
-    state.campN = null;
+    RECORDS = recs; state.campN = null;
     state.sourceLabel = 'Connecté au Google Sheet en direct';
     statusEl.textContent = `✓ ${recs.length} lignes chargées depuis Google Sheets`;
     statusEl.className = 'status ok';
@@ -609,19 +785,21 @@ async function connectSheet(url){
 document.addEventListener('DOMContentLoaded', ()=>{
   render();
 
-  document.getElementById('campSelect').addEventListener('change', e=>{
-    state.campN = parseInt(e.target.value,10);
-    render();
-  });
-  document.getElementById('regionSelect').addEventListener('change', e=>{
-    state.region = e.target.value;
-    render();
-  });
-  document.querySelectorAll('.chip[data-zone]').forEach(ch=>{
-    ch.addEventListener('click', ()=>{
-      state.zone = ch.dataset.zone;
-      render();
+  document.querySelectorAll('.navitem[data-view]').forEach(nav=>{
+    nav.addEventListener('click', ()=>{
+      document.querySelectorAll('.navitem[data-view]').forEach(n=>n.classList.remove('active'));
+      nav.classList.add('active');
+      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+      document.getElementById('view-'+nav.dataset.view).classList.add('active');
+      state.view = nav.dataset.view;
+      if(nav.dataset.view==='geo'){ setTimeout(()=>{ if(map) map.invalidateSize(); }, 60); }
     });
+  });
+
+  document.getElementById('campSelect').addEventListener('change', e=>{ state.campN = parseInt(e.target.value,10); render(); });
+  document.getElementById('regionSelect').addEventListener('change', e=>{ state.region = e.target.value; render(); });
+  document.querySelectorAll('.chip[data-zone]').forEach(ch=>{
+    ch.addEventListener('click', ()=>{ state.zone = ch.dataset.zone; render(); });
   });
   document.getElementById('refreshBtn').addEventListener('click', ()=> render());
 
@@ -634,14 +812,26 @@ document.addEventListener('DOMContentLoaded', ()=>{
     if(url) connectSheet(url);
   });
   document.getElementById('resetBtn').addEventListener('click', ()=>{
-    RECORDS = window.__EMBEDDED_DATA__;
-    state.campN = null;
+    RECORDS = window.__EMBEDDED_DATA__; state.campN = null;
     state.sourceLabel = 'Données intégrées (snapshot)';
     document.getElementById('connectStatus').textContent = '';
     render();
   });
+
+  const adModal = document.getElementById('alertDetailModal');
+  document.getElementById('closeAlertDetail').addEventListener('click', ()=> adModal.classList.remove('show'));
+  adModal.addEventListener('click', e=>{ if(e.target===adModal) adModal.classList.remove('show'); });
 });
 
+</script>
+<script>
+document.getElementById('settingsBtnSide').addEventListener('click', ()=> document.getElementById('settingsModal').classList.add('show'));
+document.querySelectorAll('.navitem[data-view]').forEach(nav=>{
+  nav.addEventListener('click', ()=>{
+    const titles = {overview:"Vue d'ensemble", operational:"Vue opérationnelle", geo:"Vue géographique", alerts:"Alertes"};
+    document.getElementById('pageTitle').textContent = titles[nav.dataset.view];
+  });
+});
 </script>
 </body>
 </html>
