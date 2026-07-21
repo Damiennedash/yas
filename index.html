@@ -472,6 +472,16 @@ html, body{ overflow-x:hidden; width:100%; }
         </div>
         <div id="geoWarning" style="margin-top:6px; font-size:12px; color:#B5460E; font-weight:600;"></div>
       </div>
+
+      <div class="section-title">📊 Répartition des localités par statut et région</div>
+      <div class="chart-card">
+        <div class="chart-wrap"><canvas id="geoStatusChart"></canvas></div>
+      </div>
+
+      <div class="section-title">🫧 Densité de conformité par région</div>
+      <div class="chart-card">
+        <div class="chart-wrap"><canvas id="geoBubbleChart"></canvas></div>
+      </div>
     </section>
 
     <!-- ===== VIEW: LOCALITES ===== -->
@@ -495,6 +505,12 @@ html, body{ overflow-x:hidden; width:100%; }
       <div class="chart-card">
         <div class="chart-wrap" style="height:280px;"><canvas id="alertKpiChart"></canvas></div>
       </div>
+
+      <div class="section-title">🗺️ Localités en alerte — carte</div>
+      <div class="chart-card">
+        <div id="alertMap" style="height:380px; border-radius:12px; overflow:hidden;"></div>
+      </div>
+
       <div class="section-title">🔔 Toutes les alertes — cliquez pour le détail et les suggestions</div>
       <div class="alert-list big" id="alertListFull"></div>
     </section>
@@ -593,8 +609,11 @@ window.__TOGO_REF_POINTS__ = [[6.2112, 1.1552], [6.138, 1.231], [6.1242, 1.2257]
 
 
 
+
 /* ===== State ===== */
 let RECORDS = []; // no built-in snapshot: the Dashboard only shows data from your connected Google Sheet
+const REGION_ORDER = ['GRAND LOME','MARITIME','PLATEAUX','CENTRALE','KARA','SAVANES'];
+const regionLabel = r => r==='GRAND LOME' ? 'Grand Lomé' : r.charAt(0)+r.slice(1).toLowerCase();
 const KPI_REF = window.__KPI_REF__;
 const SUGGESTIONS = window.__SUGGESTIONS__;
 const KPI_ORDER = Object.keys(KPI_REF);
@@ -747,7 +766,7 @@ function showEmptyState(){
   document.getElementById('locCount').textContent = '0';
   Object.values(charts).forEach(c=> c && c.destroy());
   charts = {};
-  if(typeof L !== 'undefined'){ ensureMap(); markerLayer.clearLayers(); }
+  if(typeof L !== 'undefined'){ ensureMap(); markerLayer.clearLayers(); if(alertMap) alertMarkerLayer.clearLayers(); }
   const warnEl = document.getElementById('geoWarning');
   if(warnEl) warnEl.textContent = '';
   document.getElementById('sourceNote').textContent = state.sourceLabel;
@@ -826,6 +845,8 @@ function render(){
   renderServiceCards(recs);
   renderComparaisonCharts(recs, campN);
   renderAlertKpiChart(recs);
+  renderGeoCharts(recs);
+  renderAlertMap(alerts);
 
   document.getElementById('sourceNote').textContent = state.sourceLabel;
   document.getElementById('lastCampLabel').textContent = campLabel(campN);
@@ -927,7 +948,6 @@ function renderCharts(recs){
   // Region comparison — compares all 6 Togolese regions for the selected campaign (ignores the
   // region filter itself, since the point is to compare regions against each other).
   const campN = recs.length ? recs[0].campN : null;
-  const REGION_ORDER = ['GRAND LOME','MARITIME','PLATEAUX','CENTRALE','KARA','SAVANES'];
   const regRecs = campN!==null ? RECORDS.filter(r=>r.campN===campN && (state.zone==='ALL'||r.zone===state.zone)) : [];
   const regionAvg = REGION_ORDER.map(reg=>{
     const rows = regRecs.filter(r=>r.reg===reg);
@@ -938,7 +958,7 @@ function renderCharts(recs){
     if(charts.region) charts.region.destroy();
     charts.region = new Chart(ctx3, {
       type:'bar',
-      data:{ labels: REGION_ORDER.map(r=>r==='GRAND LOME'?'Grand Lomé':r.charAt(0)+r.slice(1).toLowerCase()),
+      data:{ labels: REGION_ORDER.map(regionLabel),
         datasets:[{ label:'Taux de conformité (%)', data: regionAvg,
           backgroundColor: regionAvg.map(v=> v===null?'#E7E9F2': v>=75?'#1E9E6B': v>=50?'#F5A623':'#E1483D'),
           borderRadius:8, maxBarThickness:60 }] },
@@ -1009,6 +1029,58 @@ function renderComparaisonCharts(recs, campN){
 }
 
 /* ===== Alertes tab: which KPIs fail most often among critical localities ===== */
+/* ===== Vue géographique: distribution & density-by-region charts ===== */
+function renderGeoCharts(recs){
+  const campN = recs.length ? recs[0].campN : null;
+  const regRecs = campN!==null ? RECORDS.filter(r=>r.campN===campN && (state.zone==='ALL'||r.zone===state.zone)) : [];
+
+  const okCounts=[], warnCounts=[], critCounts=[], avgs=[], counts=[];
+  REGION_ORDER.forEach(reg=>{
+    const rows = regRecs.filter(r=>r.reg===reg);
+    okCounts.push(rows.filter(r=>r.pct>=75).length);
+    warnCounts.push(rows.filter(r=>r.pct>=50 && r.pct<75).length);
+    critCounts.push(rows.filter(r=>r.pct<50).length);
+    avgs.push(rows.length ? rows.reduce((s,r)=>s+r.pct,0)/rows.length : null);
+    counts.push(rows.length);
+  });
+
+  const ctxS = document.getElementById('geoStatusChart');
+  if(ctxS){
+    if(charts.geoStatus) charts.geoStatus.destroy();
+    charts.geoStatus = new Chart(ctxS, {
+      type:'bar',
+      data:{ labels: REGION_ORDER.map(regionLabel), datasets:[
+        {label:'Conformes', data: okCounts, backgroundColor:'#1E9E6B', stack:'s'},
+        {label:'Vigilance', data: warnCounts, backgroundColor:'#F5A623', stack:'s'},
+        {label:'Critiques', data: critCounts, backgroundColor:'#E1483D', stack:'s'}
+      ]},
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom', labels:{font:{size:11}, usePointStyle:true, boxWidth:8}}},
+        scales:{ x:{stacked:true, grid:{display:false}, ticks:{font:{size:10.5,weight:'600'}}},
+          y:{stacked:true, beginAtZero:true, ticks:{stepSize:5, font:{size:10}}, grid:{color:'#EEF0F5'}} } }
+    });
+  }
+
+  const ctxB = document.getElementById('geoBubbleChart');
+  if(ctxB){
+    if(charts.geoBubble) charts.geoBubble.destroy();
+    const bubbleColors = ['#0E1B3D','#0E7C86','#3B4FD1','#14276B','#C0399F','#E1483D'];
+    charts.geoBubble = new Chart(ctxB, {
+      type:'bubble',
+      data:{ datasets: REGION_ORDER.map((reg,i)=>({
+        label: regionLabel(reg),
+        data: avgs[i]===null ? [] : [{x:i, y:avgs[i], r: Math.max(6, Math.sqrt(counts[i])*4)}],
+        backgroundColor: bubbleColors[i]+'CC'
+      })) },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{position:'bottom', labels:{font:{size:10.5}, usePointStyle:true, boxWidth:8}},
+          tooltip:{callbacks:{label:c=> `${c.dataset.label} : ${c.parsed.y.toFixed(1)}% (${counts[c.datasetIndex]} localités)`}} },
+        scales:{ x:{min:-0.5, max:5.5, ticks:{callback:v=> REGION_ORDER[v] ? regionLabel(REGION_ORDER[v]) : '', font:{size:9.5}}, grid:{display:false}},
+          y:{min:0, max:100, ticks:{callback:v=>v+'%', font:{size:10}}, grid:{color:'#EEF0F5'}} } }
+    });
+  }
+}
+
 function renderAlertKpiChart(recs){
   const ctx = document.getElementById('alertKpiChart');
   if(!ctx) return;
@@ -1148,6 +1220,40 @@ function drawMapMarkers(valid){
   });
 }
 
+let alertMap = null, alertMarkerLayer = null;
+
+function ensureAlertMap(){
+  if(alertMap) return;
+  alertMap = L.map('alertMap', {
+    scrollWheelZoom:false, maxBounds: TOGO_MAX_BOUNDS, maxBoundsViscosity:1.0, minZoom:7
+  });
+  alertMap.fitBounds(TOGO_VIEW_BOUNDS);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+  }).addTo(alertMap);
+  alertMarkerLayer = L.layerGroup().addTo(alertMap);
+}
+
+function renderAlertMap(alerts){
+  if(typeof L === 'undefined' || state.view !== 'alerts') return;
+  ensureAlertMap();
+  alertMarkerLayer.clearLayers();
+  const seen = new Set();
+  alerts.forEach(a=>{
+    const r = a.rec;
+    if(seen.has(r.loc)) return;
+    seen.add(r.loc);
+    if(isNaN(r.lat) || isNaN(r.lon) || !isInTogo(r.lat, r.lon)) return;
+    const color = badgeColor(r.pct);
+    const m = L.marker([r.lat, r.lon], {
+      icon: L.divIcon({ className:'', html:'<div class="pulse-dot"></div>', iconSize:[14,14], iconAnchor:[7,7] }),
+      zIndexOffset: 1000
+    });
+    m.bindPopup(`<strong>${r.loc}</strong><br>${r.reg} · ${r.zone==='GL'?'Grand Lomé':'Hors Lomé'}<br><span style="color:${color}">${a.msg}</span>`);
+    m.addTo(alertMarkerLayer);
+  });
+}
+
 /* ===== CSV loader for Google Sheets ===== */
 function parseCSV(text){
   const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
@@ -1264,6 +1370,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
           map.fitBounds(TOGO_VIEW_BOUNDS);
           drawMapMarkers(lastValidRecs);
         }, 60);
+      } else if(nav.dataset.view==='alerts'){
+        setTimeout(()=>{
+          if(RECORDS.length>0) render();
+          ensureAlertMap();
+          alertMap.invalidateSize();
+          alertMap.fitBounds(TOGO_VIEW_BOUNDS);
+        }, 60);
       } else if(RECORDS.length>0){
         // Charts created while their tab was hidden can end up with a zero-size canvas;
         // re-rendering once the tab is visible fixes that without any visible flicker.
@@ -1303,6 +1416,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('closeAlertDetail').addEventListener('click', ()=> adModal.classList.remove('show'));
   adModal.addEventListener('click', e=>{ if(e.target===adModal) adModal.classList.remove('show'); });
 });
+
 
 
 
