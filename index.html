@@ -352,6 +352,7 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
           <span><span class="dot" style="background:#F5A623;"></span>Vigilance (50-75%)</span>
           <span><span class="dot" style="background:#E1483D;"></span>Critique (&lt;50%) — alerte mise en évidence</span>
         </div>
+        <div id="geoWarning" style="margin-top:6px; font-size:12px; color:#B5460E; font-weight:600;"></div>
       </div>
 
       <div class="section-title">Localités — détail <span class="count" id="locCount">0</span></div>
@@ -801,22 +802,44 @@ function renderServiceCards(recs){
   });
 }
 
+// Togo's real extent (from the ARCEP dataset itself) plus a small margin.
+const TOGO_STRICT = { latMin: 5.7, latMax: 11.4, lonMin: -0.3, lonMax: 2.0 };
+const TOGO_VIEW_BOUNDS = L.latLngBounds([5.9, -0.15], [11.2, 1.85]);
+const TOGO_MAX_BOUNDS = L.latLngBounds([4.9, -1.1], [12.2, 2.9]);
+
 function ensureMap(){
   if(map) return;
-  map = L.map('map', {scrollWheelZoom:false}).setView([8.2, 1.1], 7.2);
+  map = L.map('map', {
+    scrollWheelZoom:false,
+    maxBounds: TOGO_MAX_BOUNDS,
+    maxBoundsViscosity: 1.0,
+    minZoom: 7
+  });
+  map.fitBounds(TOGO_VIEW_BOUNDS);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
   }).addTo(map);
   markerLayer = L.layerGroup().addTo(map);
 }
 
+function isInTogo(lat, lon){
+  return lat>=TOGO_STRICT.latMin && lat<=TOGO_STRICT.latMax && lon>=TOGO_STRICT.lonMin && lon<=TOGO_STRICT.lonMax;
+}
+
 function renderMap(recs){
   if(typeof L === 'undefined') return;
   ensureMap();
   markerLayer.clearLayers();
-  const ordered = [...recs].sort((a,b)=> (a.pct<50?1:0) - (b.pct<50?1:0));
+  const valid = recs.filter(r=> !isNaN(r.lat) && !isNaN(r.lon) && isInTogo(r.lat, r.lon));
+  const excluded = recs.length - valid.length;
+  const warnEl = document.getElementById('geoWarning');
+  if(warnEl){
+    warnEl.textContent = excluded>0
+      ? `⚠ ${excluded} localité(s) ignorée(s) sur la carte : coordonnées hors du Togo (à corriger dans le Google Sheet).`
+      : '';
+  }
+  const ordered = [...valid].sort((a,b)=> (a.pct<50?1:0) - (b.pct<50?1:0));
   ordered.forEach(r=>{
-    if(isNaN(r.lat) || isNaN(r.lon)) return;
     const color = badgeColor(r.pct);
     const popupHtml = `<strong>${r.loc}</strong><br>${r.reg} · ${r.zone==='GL'?'Grand Lomé':'Hors Lomé'}<br>Conformité : <b style="color:${color}">${r.pct.toFixed(1)}%</b><br>${r.conf}/${r.tot} KQI conformes`;
     let m;
@@ -876,23 +899,47 @@ function rowsToRecords(rows){
   }).filter(r=>r.loc && !isNaN(r.campN));
 }
 
-async function connectSheet(url){
+const STORAGE_KEY = 'yasQoeSheetUrl';
+const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutes
+let autoRefreshTimer = null;
+let connectedUrl = null;
+
+function safeStorage(){
+  try{ if(typeof localStorage !== 'undefined'){ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); return localStorage; } }catch(e){}
+  return null;
+}
+const LS = safeStorage();
+
+function stopAutoRefresh(){ if(autoRefreshTimer){ clearInterval(autoRefreshTimer); autoRefreshTimer = null; } }
+function startAutoRefresh(url){
+  stopAutoRefresh();
+  autoRefreshTimer = setInterval(()=> connectSheet(url, {silent:true}), AUTO_REFRESH_MS);
+}
+
+async function connectSheet(url, opts={}){
   const statusEl = document.getElementById('connectStatus');
   try{
-    statusEl.textContent = 'Chargement…'; statusEl.className = 'status loading';
-    const res = await fetch(url);
+    if(!opts.silent){ statusEl.textContent = 'Chargement…'; statusEl.className = 'status loading'; }
+    const res = await fetch(url, {cache:'no-store'});
     if(!res.ok) throw new Error('HTTP '+res.status);
     const text = await res.text();
     const rows = parseCSV(text);
     const recs = rowsToRecords(rows);
     if(recs.length===0) throw new Error('Aucune ligne valide trouvée');
-    RECORDS = recs; state.campN = null;
-    state.sourceLabel = 'Connecté au Google Sheet en direct';
+    RECORDS = recs;
+    if(!opts.silent) state.campN = null;
+    connectedUrl = url;
+    if(LS) LS.setItem(STORAGE_KEY, url);
+    const now = new Date();
+    state.sourceLabel = `Connecté au Google Sheet en direct · dernière synchro ${now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}`;
     statusEl.textContent = `✓ ${recs.length} lignes chargées depuis Google Sheets`;
     statusEl.className = 'status ok';
+    document.getElementById('sheetUrl').value = url;
+    startAutoRefresh(url);
     render();
   }catch(e){
-    statusEl.textContent = '✗ Échec du chargement : '+e.message+'. Vérifiez le lien de publication CSV.';
+    // Keep last good data on screen; only surface the error, never wipe RECORDS.
+    statusEl.textContent = '✗ Échec du chargement : '+e.message+'. Vérifiez le lien de publication CSV (et que le partage est bien "Public sur le web").';
     statusEl.className = 'status err';
   }
 }
@@ -901,6 +948,13 @@ async function connectSheet(url){
 document.addEventListener('DOMContentLoaded', ()=>{
   render();
 
+  // Auto-reconnect to the last connected Google Sheet, if any, so the link survives page reloads.
+  const savedUrl = LS ? LS.getItem(STORAGE_KEY) : null;
+  if(savedUrl){
+    document.getElementById('sheetUrl').value = savedUrl;
+    connectSheet(savedUrl);
+  }
+
   document.querySelectorAll('.navitem[data-view]').forEach(nav=>{
     nav.addEventListener('click', ()=>{
       document.querySelectorAll('.navitem[data-view]').forEach(n=>n.classList.remove('active'));
@@ -908,7 +962,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
       document.getElementById('view-'+nav.dataset.view).classList.add('active');
       state.view = nav.dataset.view;
-      if(nav.dataset.view==='geo'){ setTimeout(()=>{ if(map) map.invalidateSize(); }, 60); }
+      if(nav.dataset.view==='geo'){ setTimeout(()=>{ if(map){ map.invalidateSize(); map.fitBounds(TOGO_VIEW_BOUNDS); } }, 60); }
     });
   });
 
@@ -917,7 +971,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.querySelectorAll('.chip[data-zone]').forEach(ch=>{
     ch.addEventListener('click', ()=>{ state.zone = ch.dataset.zone; render(); });
   });
-  document.getElementById('refreshBtn').addEventListener('click', ()=> render());
+  // Manual refresh re-fetches the connected sheet (if any) instead of just re-drawing stale data.
+  document.getElementById('refreshBtn').addEventListener('click', ()=>{
+    if(connectedUrl) connectSheet(connectedUrl); else render();
+  });
 
   const modal = document.getElementById('settingsModal');
   document.getElementById('settingsBtn').addEventListener('click', ()=> modal.classList.add('show'));
@@ -930,7 +987,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('resetBtn').addEventListener('click', ()=>{
     RECORDS = window.__EMBEDDED_DATA__; state.campN = null;
     state.sourceLabel = 'Données intégrées (snapshot)';
+    connectedUrl = null;
+    stopAutoRefresh();
+    if(LS) LS.removeItem(STORAGE_KEY);
     document.getElementById('connectStatus').textContent = '';
+    document.getElementById('sheetUrl').value = '';
     render();
   });
 
