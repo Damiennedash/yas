@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard QoE ARCEP — Yas Togo</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='32' fill='%23FFC800'/><path d='M24 18L48 32L24 46V18Z' fill='%230E1B3D'/></svg>">
+<link rel="icon" type="image/png" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -193,6 +193,35 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
 .detail-head{ display:flex; justify-content:space-between; align-items:flex-start; }
 .detail-pct{ font-size:26px; font-weight:800; }
 
+/* ================= v3: logo, bigger map, pulsing alerts, service cards ================= */
+.logo-mark.imglogo{ background:transparent; box-shadow:none; width:44px; height:44px; }
+.logo-mark.imglogo img{ width:100%; height:100%; object-fit:contain; }
+
+#map{ height:640px; }
+
+.pulse-dot{ width:14px; height:14px; border-radius:50%; background:#E1483D; position:relative; border:2px solid #fff; box-shadow:0 0 0 rgba(225,72,61,.5); }
+.pulse-dot::after{
+  content:''; position:absolute; inset:-8px; border-radius:50%;
+  background:rgba(225,72,61,.55); animation:pulseRing 1.5s ease-out infinite;
+}
+@keyframes pulseRing{
+  0%{ transform:scale(0.5); opacity:.9; }
+  100%{ transform:scale(2.6); opacity:0; }
+}
+
+.service-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-bottom:22px; }
+@media(max-width:1100px){ .service-grid{ grid-template-columns:1fr; } }
+.service-card{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px 16px 8px; border-top:4px solid var(--svc); }
+.service-card .svc-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+.service-card .svc-head h4{ margin:0; font-size:14.5px; }
+.service-card .svc-avg{ font-size:20px; font-weight:800; color:var(--svc); }
+.service-chart-wrap{ height:120px; margin-bottom:10px; }
+.service-table{ width:100%; border-collapse:collapse; font-size:11.8px; }
+.service-table td{ padding:6px 0; border-bottom:1px solid #F0F1F6; }
+.service-table td.code{ font-family:'IBM Plex Mono', monospace; color:var(--navy2); font-weight:600; width:64px; }
+.service-table td.lbl{ color:#3A4363; }
+.service-table td.pct{ text-align:right; font-weight:700; width:48px; }
+
 </style>
 </head>
 <body>
@@ -200,8 +229,8 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
 <div class="app-shell">
   <aside class="sidebar">
     <div class="brand">
-      <div class="logo-mark">
-        <svg width="14" height="16" viewBox="0 0 14 16" fill="none"><path d="M0 0L14 8L0 16V0Z" fill="#0E1B3D"/></svg>
+      <div class="logo-mark imglogo">
+        <img src="yas-logo.png" alt="Yas Togo">
       </div>
       <div class="brand-text">
         <h1>Yas Togo</h1>
@@ -280,7 +309,27 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
 
     <!-- ===== VIEW: OPERATIONAL ===== -->
     <section class="view" id="view-operational">
-      <div class="section-title">🧪 Détail des 16 KPI ARCEP — <span id="lastCampLabel2"></span></div>
+      <div class="section-title">🧪 KPI par service — <span id="lastCampLabel2"></span></div>
+
+      <div class="service-grid">
+        <div class="service-card" style="--svc:#14276B;">
+          <div class="svc-head"><h4>🎙️ Voix (4 KPI)</h4><div class="svc-avg" id="avgVoix">—</div></div>
+          <div class="service-chart-wrap"><canvas id="chartVoix"></canvas></div>
+          <table class="service-table"><tbody id="tblVoix"></tbody></table>
+        </div>
+        <div class="service-card" style="--svc:#0E7C86;">
+          <div class="svc-head"><h4>📶 Data 3G (6 KPI)</h4><div class="svc-avg" id="avg3G">—</div></div>
+          <div class="service-chart-wrap"><canvas id="chart3G"></canvas></div>
+          <table class="service-table"><tbody id="tbl3G"></tbody></table>
+        </div>
+        <div class="service-card" style="--svc:#3B4FD1;">
+          <div class="svc-head"><h4>📡 Data 4G (6 KPI)</h4><div class="svc-avg" id="avg4G">—</div></div>
+          <div class="service-chart-wrap"><canvas id="chart4G"></canvas></div>
+          <table class="service-table"><tbody id="tbl4G"></tbody></table>
+        </div>
+      </div>
+
+      <div class="section-title">📋 Détail complet des 16 KPI ARCEP</div>
       <div class="table-card">
         <div class="table-scroll">
           <table>
@@ -301,7 +350,7 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
         <div class="map-legend">
           <span><span class="dot" style="background:#1E9E6B;"></span>Conforme (≥75%)</span>
           <span><span class="dot" style="background:#F5A623;"></span>Vigilance (50-75%)</span>
-          <span><span class="dot" style="background:#E1483D;"></span>Critique (&lt;50%)</span>
+          <span><span class="dot" style="background:#E1483D;"></span>Critique (&lt;50%) — alerte mise en évidence</span>
         </div>
       </div>
 
@@ -485,6 +534,21 @@ function kpiTable(recs){
   });
 }
 
+function serviceTrend(service){
+  const camps = campaignsAvailable();
+  const codes = KPI_ORDER.filter(c=>KPI_REF[c].service===service);
+  const labels = [], values = [];
+  camps.forEach(cn=>{
+    const recs = RECORDS.filter(r=>r.campN===cn && (state.region==='ALL'||r.reg===state.region) && (state.zone==='ALL'||r.zone===state.zone));
+    if(recs.length===0){ labels.push(campLabel(cn)); values.push(null); return; }
+    let sum=0, cnt=0;
+    recs.forEach(r=> codes.forEach(c=>{ if(r.kpi[c]){ sum += r.kpi[c][1]; cnt++; } }));
+    labels.push(campLabel(cn));
+    values.push(cnt? sum/cnt*100 : null);
+  });
+  return {labels, values};
+}
+
 function trendSeries(){
   const camps = campaignsAvailable();
   const rows = camps.map(cn=>{
@@ -598,6 +662,7 @@ function render(){
 
   renderCharts(recs);
   renderMap(recs);
+  renderServiceCards(recs);
 
   document.getElementById('sourceNote').textContent = state.sourceLabel;
   document.getElementById('lastCampLabel').textContent = campLabel(campN);
@@ -693,6 +758,49 @@ function renderCharts(recs){
   });
 }
 
+const SERVICE_META = {
+  'VOIX': {color:'#14276B', chartId:'chartVoix', tblId:'tblVoix', avgId:'avgVoix'},
+  'DATA 3G': {color:'#0E7C86', chartId:'chart3G', tblId:'tbl3G', avgId:'avg3G'},
+  'DATA 4G': {color:'#3B4FD1', chartId:'chart4G', tblId:'tbl4G', avgId:'avg4G'}
+};
+
+function renderServiceCards(recs){
+  const kt = kpiTable(recs);
+  Object.entries(SERVICE_META).forEach(([service, meta])=>{
+    const rows = kt.filter(k=>k.service===service);
+    const avg = rows.reduce((s,r)=>s+r.confRate,0)/rows.length;
+    const avgEl = document.getElementById(meta.avgId);
+    if(avgEl) avgEl.textContent = avg.toFixed(0)+'%';
+
+    const tbody = document.getElementById(meta.tblId);
+    if(tbody){
+      tbody.innerHTML = rows.map(k=>`
+        <tr>
+          <td class="code">${k.code}</td>
+          <td class="lbl">${k.label}</td>
+          <td class="pct" style="color:${badgeColor(k.confRate)}">${k.confRate.toFixed(0)}%</td>
+        </tr>`).join('');
+    }
+
+    const trend = serviceTrend(service);
+    const ctx = document.getElementById(meta.chartId);
+    if(ctx){
+      if(charts[meta.chartId]) charts[meta.chartId].destroy();
+      charts[meta.chartId] = new Chart(ctx, {
+        type:'line',
+        data:{ labels: trend.labels, datasets:[{
+          data: trend.values, borderColor: meta.color, backgroundColor: meta.color+'22',
+          borderWidth:2.5, tension:0.35, pointRadius:2.5, pointBackgroundColor: meta.color, fill:true
+        }]},
+        options:{ responsive:true, maintainAspectRatio:false,
+          plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=> (c.parsed.y!==null? c.parsed.y.toFixed(1)+'%':'—')}}},
+          scales:{ y:{min:0,max:100, ticks:{callback:v=>v+'%', font:{size:9}}, grid:{color:'#EEF0F5'}},
+            x:{ticks:{font:{size:9}}, grid:{display:false}} } }
+      });
+    }
+  });
+}
+
 function ensureMap(){
   if(map) return;
   map = L.map('map', {scrollWheelZoom:false}).setView([8.2, 1.1], 7.2);
@@ -706,13 +814,21 @@ function renderMap(recs){
   if(typeof L === 'undefined') return;
   ensureMap();
   markerLayer.clearLayers();
-  recs.forEach(r=>{
+  const ordered = [...recs].sort((a,b)=> (a.pct<50?1:0) - (b.pct<50?1:0));
+  ordered.forEach(r=>{
     if(isNaN(r.lat) || isNaN(r.lon)) return;
     const color = badgeColor(r.pct);
-    const m = L.circleMarker([r.lat, r.lon], {
-      radius: 6, fillColor: color, color:'#fff', weight:1.5, fillOpacity:0.9
-    });
-    m.bindPopup(`<strong>${r.loc}</strong><br>${r.reg} · ${r.zone==='GL'?'Grand Lomé':'Hors Lomé'}<br>Conformité : <b style="color:${color}">${r.pct.toFixed(1)}%</b><br>${r.conf}/${r.tot} KQI conformes`);
+    const popupHtml = `<strong>${r.loc}</strong><br>${r.reg} · ${r.zone==='GL'?'Grand Lomé':'Hors Lomé'}<br>Conformité : <b style="color:${color}">${r.pct.toFixed(1)}%</b><br>${r.conf}/${r.tot} KQI conformes`;
+    let m;
+    if(r.pct < 50){
+      m = L.marker([r.lat, r.lon], {
+        icon: L.divIcon({ className:'', html:'<div class="pulse-dot"></div>', iconSize:[14,14], iconAnchor:[7,7] }),
+        zIndexOffset: 1000
+      });
+    } else {
+      m = L.circleMarker([r.lat, r.lon], { radius: 6, fillColor: color, color:'#fff', weight:1.5, fillOpacity:0.9 });
+    }
+    m.bindPopup(popupHtml);
     m.addTo(markerLayer);
   });
 }
