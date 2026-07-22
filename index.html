@@ -11,7 +11,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <style>
 :root{
   --navy:#0E1B3D;
@@ -806,6 +805,7 @@ window.__LOC_COORDS__ = {"AFLAO GAKLI": [6.21122, 1.15517], "AMOUTIVE": [6.13795
 
 
 
+
 /* Data labels: registered globally but off by default; turned on per-chart where it stays readable
    (bar / doughnut charts). Left off for dense multi-line charts (trend, radar, per-KPI evolution)
    where printed numbers would overlap and hurt readability rather than help it. */
@@ -837,7 +837,6 @@ let state = {
 
 let map = null;
 let markerLayer = null;
-let heatLayer = null;
 
 const campaignsAvailable = () => [...new Set(RECORDS.map(r=>r.campN))].sort((a,b)=>a-b);
 const campLabel = (n) => (RECORDS.find(r=>r.campN===n)||{}).camp || n;
@@ -1822,17 +1821,10 @@ function ensureMap(){
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
   }).addTo(map);
   markerLayer = L.layerGroup().addTo(map);
-  if(typeof L.heatLayer === 'function'){
-    heatLayer = L.heatLayer([], { radius:22, blur:18, maxZoom:12, gradient:{0.3:'#1E9E6B',0.6:'#F5A623',1.0:'#E1483D'} });
-  }
 }
 
 let mapMode = 'points';
 window.setMapMode = function(mode){
-  if(mode==='heat' && typeof L !== 'undefined' && typeof L.heatLayer !== 'function'){
-    alert("La couche de chaleur n'a pas pu se charger (bibliothèque indisponible). Retour au mode Points.");
-    mode = 'points';
-  }
   mapMode = mode;
   document.getElementById('mapModePoints').classList.toggle('active', mode==='points');
   document.getElementById('mapModeHeat').classList.toggle('active', mode==='heat');
@@ -1873,13 +1865,21 @@ function renderMap(recs){
 function drawMapMarkers(valid){
   ensureMap();
   markerLayer.clearLayers();
-  if(heatLayer && map.hasLayer(heatLayer)) map.removeLayer(heatLayer);
 
-  if(mapMode === 'heat' && heatLayer){
-    // Intensity = inverse of conformity: critical localities weigh most heavily on the heat layer.
-    const points = valid.map(r=> [r.lat, r.lon, Math.max(0.15, (100-r.pct)/100)]);
-    heatLayer.setLatLngs(points);
-    heatLayer.addTo(map);
+  if(mapMode === 'heat'){
+    // Native heat effect: large translucent circles per locality, colored by conformity level.
+    // Overlapping circles naturally darken where several problem localities cluster together —
+    // no external plugin required, so this can never silently fail to load.
+    const ordered = [...valid].sort((a,b)=> a.pct-b.pct); // draw worst first so critical zones stay on top
+    ordered.forEach(r=>{
+      const color = badgeColor(r.pct);
+      const intensity = Math.max(0.12, (100-r.pct)/100); // more critical → more opaque/"hotter"
+      L.circle([r.lat, r.lon], {
+        radius: 11000, // metres — wide enough that nearby localities visually blend together
+        color: 'transparent', weight:0,
+        fillColor: color, fillOpacity: intensity*0.55
+      }).addTo(markerLayer);
+    });
     return;
   }
 
@@ -2160,6 +2160,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('closeAlertDetail').addEventListener('click', ()=> adModal.classList.remove('show'));
   adModal.addEventListener('click', e=>{ if(e.target===adModal) adModal.classList.remove('show'); });
 });
+
 
 
 
