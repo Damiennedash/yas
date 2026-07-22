@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <style>
@@ -398,6 +399,16 @@ html, body{ overflow-x:hidden; width:100%; }
         <h3>Taux de conformité par région (campagne sélectionnée)</h3>
         <div class="chart-wrap" style="height:260px;"><canvas id="regionChart"></canvas></div>
       </div>
+
+      <div class="section-title">🌍 Évolution par région (toutes campagnes)</div>
+      <div class="chart-card">
+        <div class="chart-wrap"><canvas id="regionEvoChart"></canvas></div>
+      </div>
+
+      <div class="section-title">🧬 Évolution des 16 KPI (toutes campagnes)</div>
+      <div class="chart-card">
+        <div class="chart-wrap" style="height:340px;"><canvas id="kpiAllEvoChart"></canvas></div>
+      </div>
     </section>
 
     <!-- ===== VIEW: OPERATIONAL ===== -->
@@ -643,6 +654,20 @@ window.__TOGO_REF_POINTS__ = [[6.2112, 1.1552], [6.138, 1.231], [6.1242, 1.2257]
 
 
 
+
+/* Data labels: registered globally but off by default; turned on per-chart where it stays readable
+   (bar / doughnut charts). Left off for dense multi-line charts (trend, radar, per-KPI evolution)
+   where printed numbers would overlap and hurt readability rather than help it. */
+if(typeof Chart !== 'undefined' && typeof ChartDataLabels !== 'undefined'){
+  Chart.register(ChartDataLabels);
+  Chart.defaults.set('plugins.datalabels', { display:false });
+}
+const DL_BAR = { display:true, color:'#0E1B3D', font:{weight:'700', size:10.5},
+  formatter:(v)=> (v===null||v===undefined) ? '' : v.toFixed(1)+'%', anchor:'end', align:'end', offset:2 };
+const DL_BAR_WHITE = { display:true, color:'#fff', font:{weight:'700', size:10}, formatter:(v)=> (v && v>0) ? v+'' : '' , anchor:'center', align:'center' };
+const DL_DOUGHNUT = { display:true, color:'#fff', font:{weight:'800', size:12},
+  formatter:(v,ctx)=>{ const total = ctx.dataset.data.reduce((a,b)=>a+b,0); return total? Math.round(v/total*100)+'%' : ''; } };
+
 /* ===== State ===== */
 let RECORDS = []; // no built-in snapshot: the Dashboard only shows data from your connected Google Sheet
 const REGION_ORDER = ['GRAND LOME','MARITIME','PLATEAUX','CENTRALE','KARA','SAVANES'];
@@ -880,6 +905,7 @@ function render(){
   renderAlertKpiChart(recs);
   renderGeoCharts(recs);
   renderAlertMap(alerts);
+  renderEvolutionExtra();
 
   document.getElementById('sourceNote').textContent = state.sourceLabel;
   document.getElementById('lastCampLabel').textContent = campLabel(campN);
@@ -973,7 +999,7 @@ function renderCharts(recs){
     data:{ labels: cats, datasets:[{ label:'Taux de conformité (%)', data: catAvg,
       backgroundColor: catAvg.map(v=> v>=75?'#1E9E6B': v>=50?'#F5A623':'#E1483D'), borderRadius:8, maxBarThickness:70 }] },
     options:{ responsive:true, maintainAspectRatio:false,
-      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+'%'}}},
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+'%'}}, datalabels: DL_BAR},
       scales:{ y:{min:0,max:100, ticks:{callback:v=>v+'%', font:{family:'Inter',size:10}}, grid:{color:'#EEF0F5'}},
         x:{ticks:{font:{family:'Inter',size:11, weight:'600'}}, grid:{display:false}} } }
   });
@@ -996,9 +1022,79 @@ function renderCharts(recs){
           backgroundColor: regionAvg.map(v=> v===null?'#E7E9F2': v>=75?'#1E9E6B': v>=50?'#F5A623':'#E1483D'),
           borderRadius:8, maxBarThickness:60 }] },
       options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y',
-        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=> c.parsed.x!==null ? c.parsed.x.toFixed(1)+'%' : 'Pas de données'}}},
+        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=> c.parsed.x!==null ? c.parsed.x.toFixed(1)+'%' : 'Pas de données'}}, datalabels: DL_BAR},
         scales:{ x:{min:0,max:100, ticks:{callback:v=>v+'%', font:{family:'Inter',size:10}}, grid:{color:'#EEF0F5'}},
           y:{ticks:{font:{family:'Inter',size:11, weight:'600'}}, grid:{display:false}} } }
+    });
+  }
+}
+
+/* ===== Évolution des KPI tab: region evolution + all-16-KPI evolution ===== */
+function regionEvolutionSeries(){
+  const camps = campaignsAvailable();
+  const series = {}; REGION_ORDER.forEach(reg=> series[reg]=[]);
+  camps.forEach(cn=>{
+    REGION_ORDER.forEach(reg=>{
+      const rows = RECORDS.filter(r=>r.campN===cn && r.reg===reg && (state.zone==='ALL'||r.zone===state.zone));
+      series[reg].push(rows.length ? rows.reduce((s,r)=>s+r.pct,0)/rows.length : null);
+    });
+  });
+  return { labels: camps.map(campLabel), series };
+}
+
+function allKpiEvolutionSeries(){
+  const camps = campaignsAvailable();
+  const series = {}; KPI_ORDER.forEach(c=> series[c]=[]);
+  camps.forEach(cn=>{
+    const rrs = RECORDS.filter(r=>r.campN===cn && (state.region==='ALL'||r.reg===state.region) && (state.zone==='ALL'||r.zone===state.zone));
+    KPI_ORDER.forEach(code=>{
+      if(rrs.length===0){ series[code].push(null); return; }
+      const sum = rrs.reduce((s,r)=> s + (r.kpi[code] ? r.kpi[code][1] : 0), 0);
+      series[code].push(sum/rrs.length*100);
+    });
+  });
+  return { labels: camps.map(campLabel), series };
+}
+
+const REGION_COLORS = ['#0E1B3D','#FFC800','#0E7C86','#3B4FD1','#C0399F','#E1483D'];
+const ALLKPI_COLORS = ['#0E1B3D','#FFC800','#1E9E6B','#E1483D','#0E7C86','#3B4FD1','#C0399F','#8A90A6',
+  '#14276B','#F5A623','#00C2D1','#7B87F5','#B5460E','#6B8F00','#D14D9B','#4C5C8A'];
+
+function renderEvolutionExtra(){
+  const ctxRE = document.getElementById('regionEvoChart');
+  if(ctxRE){
+    const evo = regionEvolutionSeries();
+    if(charts.regionEvo) charts.regionEvo.destroy();
+    charts.regionEvo = new Chart(ctxRE, {
+      type:'line',
+      data:{ labels: evo.labels, datasets: REGION_ORDER.map((reg,i)=>({
+        label: regionLabel(reg), data: evo.series[reg], borderColor: REGION_COLORS[i],
+        backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:2.5, pointBackgroundColor: REGION_COLORS[i]
+      })) },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom', labels:{font:{size:10.5}, usePointStyle:true, boxWidth:8}},
+          tooltip:{callbacks:{label:c=> `${c.dataset.label} : ${c.parsed.y!==null? c.parsed.y.toFixed(1)+'%':'—'}`}}},
+        scales:{ y:{min:0,max:100, ticks:{callback:v=>v+'%', font:{size:10}}, grid:{color:'#EEF0F5'}},
+          x:{ticks:{font:{size:10}}, grid:{display:false}} } }
+    });
+  }
+
+  const ctxAK = document.getElementById('kpiAllEvoChart');
+  if(ctxAK){
+    const evo = allKpiEvolutionSeries();
+    if(charts.kpiAllEvo) charts.kpiAllEvo.destroy();
+    charts.kpiAllEvo = new Chart(ctxAK, {
+      type:'line',
+      data:{ labels: evo.labels, datasets: KPI_ORDER.map((code,i)=>({
+        label: code, data: evo.series[code], borderColor: ALLKPI_COLORS[i%ALLKPI_COLORS.length],
+        backgroundColor:'transparent', borderWidth:1.5, tension:0.3, pointRadius:1.5,
+        pointBackgroundColor: ALLKPI_COLORS[i%ALLKPI_COLORS.length]
+      })) },
+      options:{ responsive:true, maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom', labels:{font:{size:9.5}, usePointStyle:true, boxWidth:7}},
+          tooltip:{callbacks:{label:c=> `${c.dataset.label} (${KPI_REF[c.dataset.label].label}) : ${c.parsed.y!==null? c.parsed.y.toFixed(1)+'%':'—'}`}}},
+        scales:{ y:{min:0,max:100, ticks:{callback:v=>v+'%', font:{size:9}}, grid:{color:'#EEF0F5'}},
+          x:{ticks:{font:{size:9}}, grid:{display:false}} } }
     });
   }
 }
@@ -1014,7 +1110,7 @@ function renderComparaisonCharts(recs, campN){
       data:{ labels:['Conforme (≥75%)','Vigilance (50-75%)','Critique (<50%)'],
         datasets:[{ data:[stats.ok, stats.warn, stats.crit], backgroundColor:['#1E9E6B','#F5A623','#E1483D'], borderWidth:2, borderColor:'#fff' }] },
       options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
-        plugins:{ legend:{position:'bottom', labels:{font:{family:'Inter',size:11}, usePointStyle:true, boxWidth:8}} } }
+        plugins:{ legend:{position:'bottom', labels:{font:{family:'Inter',size:11}, usePointStyle:true, boxWidth:8}}, datalabels: DL_DOUGHNUT } }
     });
   }
 
@@ -1030,7 +1126,7 @@ function renderComparaisonCharts(recs, campN){
       data:{ labels:['Grand Lomé','Hors Lomé'], datasets:[{ label:'Taux de conformité (%)', data: zoneVals,
         backgroundColor: zoneVals.map(v=> v===null?'#E7E9F2': v>=75?'#1E9E6B': v>=50?'#F5A623':'#E1483D'), borderRadius:8, maxBarThickness:90 }] },
       options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=> c.parsed.y!==null? c.parsed.y.toFixed(1)+'%':'Pas de données'}}},
+        plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=> c.parsed.y!==null? c.parsed.y.toFixed(1)+'%':'Pas de données'}}, datalabels: DL_BAR},
         scales:{ y:{min:0,max:100, ticks:{callback:v=>v+'%', font:{size:10}}, grid:{color:'#EEF0F5'}}, x:{ticks:{font:{size:12,weight:'600'}}, grid:{display:false}} } }
     });
   }
@@ -1088,7 +1184,7 @@ function renderGeoCharts(recs){
         {label:'Critiques', data: critCounts, backgroundColor:'#E1483D', stack:'s'}
       ]},
       options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{position:'bottom', labels:{font:{size:11}, usePointStyle:true, boxWidth:8}}},
+        plugins:{legend:{position:'bottom', labels:{font:{size:11}, usePointStyle:true, boxWidth:8}}, datalabels: DL_BAR_WHITE},
         scales:{ x:{stacked:true, grid:{display:false}, ticks:{font:{size:10.5,weight:'600'}}},
           y:{stacked:true, beginAtZero:true, ticks:{stepSize:5, font:{size:10}}, grid:{color:'#EEF0F5'}} } }
     });
@@ -1128,7 +1224,7 @@ function renderAlertKpiChart(recs){
       plugins:{legend:{display:false}, tooltip:{callbacks:{
         title: items=> KPI_REF[items[0].label] ? KPI_REF[items[0].label].label : items[0].label,
         label: c=> c.parsed.y + ' localité(s) critique(s) en échec'
-      }}},
+      }}, datalabels: { display:true, color:'#0E1B3D', font:{weight:'700', size:10}, formatter:(v)=> v>0? v+'' : '', anchor:'end', align:'end' }},
       scales:{ y:{beginAtZero:true, ticks:{stepSize:1, font:{size:10}}, grid:{color:'#EEF0F5'}},
         x:{ticks:{font:{size:9.5}}, grid:{display:false}} } }
   });
@@ -1230,7 +1326,7 @@ function renderServiceCards(recs){
           backgroundColor: regVals.map(v=> v===null?'#E7E9F2': v>=75?'#1E9E6B': v>=50?'#F5A623':'#E1483D'),
           borderRadius:8, maxBarThickness:50 }] },
         options:{ responsive:true, maintainAspectRatio:false,
-          plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=> c.parsed.y!==null? c.parsed.y.toFixed(1)+'%':'Pas de données'}}},
+          plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=> c.parsed.y!==null? c.parsed.y.toFixed(1)+'%':'Pas de données'}}, datalabels: DL_BAR},
           scales:{ y:{min:0,max:100, ticks:{callback:v=>v+'%', font:{size:9}}, grid:{color:'#EEF0F5'}},
             x:{ticks:{font:{size:9.5,weight:'600'}}, grid:{display:false}} } }
       });
@@ -1510,6 +1606,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('closeAlertDetail').addEventListener('click', ()=> adModal.classList.remove('show'));
   adModal.addEventListener('click', e=>{ if(e.target===adModal) adModal.classList.remove('show'); });
 });
+
 
 
 
