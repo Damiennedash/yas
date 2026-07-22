@@ -11,6 +11,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
 <style>
 :root{
   --navy:#0E1B3D;
@@ -245,6 +246,33 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
 .mini-tag.ok{ background:#E4F7EE; color:var(--ok); }
 .mini-tag.crit{ background:#FCE7E5; color:var(--crit); }
 
+.loc-search{ width:100%; max-width:420px; padding:10px 14px; border:1px solid var(--border); border-radius:10px;
+  font-size:13px; margin-bottom:14px; background:#fff; }
+.loc-search:focus{ outline:none; border-color:var(--yellow); }
+.action-select{ font-size:11.5px; padding:4px 6px; border-radius:6px; border:1px solid var(--border); background:#fff; color:var(--navy); }
+.action-select.todo{ background:#FFF3DF; }
+.action-select.progress{ background:#E0EEFF; }
+.action-select.done{ background:#E4F7EE; }
+.action-note-btn{ background:none; border:none; cursor:pointer; font-size:13px; margin-left:4px; }
+.zone-target-row{ display:flex; align-items:center; justify-content:center; gap:4px; margin-top:8px; font-size:11px; color:var(--gray); }
+.zone-target-input{ width:42px; padding:2px 4px; border:1px solid var(--border); border-radius:5px; font-size:11.5px; text-align:center; }
+.zone-target-delta{ font-size:10.5px; margin-left:4px; }
+.map-mode-toggle{ display:inline-flex; gap:6px; margin-left:12px; vertical-align:middle; }
+.map-mode-btn{ font-size:12px; font-weight:600; padding:5px 12px; border-radius:20px; border:1px solid var(--border);
+  background:#fff; color:var(--navy2); cursor:pointer; }
+.map-mode-btn.active{ background:var(--navy); color:#fff; border-color:var(--navy); }
+
+@media print{
+  .sidebar, .topbar2 .filters, .modal-backdrop{ display:none !important; }
+  .content{ margin-left:0 !important; }
+  .app-shell{ display:block !important; }
+  .view{ display:none !important; }
+  .view.active{ display:block !important; }
+  .chart-card, .table-card, .kcard{ break-inside:avoid; box-shadow:none !important; border:1px solid #ccc !important; }
+  body{ background:#fff !important; }
+  #map, #alertMap{ display:none; } /* Leaflet tiles rarely print correctly */
+}
+
 .charts-row-3{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:8px; min-width:0; }
 @media(max-width:1100px){ .charts-row-3{ grid-template-columns:1fr; } }
 
@@ -386,6 +414,7 @@ canvas{ max-width:100%; }
           <div class="chip" data-zone="HL">Hors Lomé</div>
         </div>
         <button class="icon-btn" id="refreshBtn" title="Actualiser">⟳</button>
+        <button class="icon-btn" id="exportPdfBtn" title="Exporter en PDF" onclick="window.print()">🖨️</button>
         <button class="icon-btn" id="settingsBtn" title="Connecter Google Sheet">⚙</button>
       </div>
     </div>
@@ -604,7 +633,12 @@ canvas{ max-width:100%; }
 
     <!-- ===== VIEW: GEO ===== -->
     <section class="view" id="view-geo">
-      <div class="section-title">🗺️ Carte des localités (Togo)</div>
+      <div class="section-title">🗺️ Carte des localités (Togo)
+        <span class="map-mode-toggle">
+          <button class="map-mode-btn active" id="mapModePoints" onclick="setMapMode('points')">📍 Points</button>
+          <button class="map-mode-btn" id="mapModeHeat" onclick="setMapMode('heat')">🔥 Chaleur</button>
+        </span>
+      </div>
       <div class="chart-card">
         <div id="map"></div>
         <div class="map-legend">
@@ -631,11 +665,12 @@ canvas{ max-width:100%; }
     <!-- ===== VIEW: LOCALITES ===== -->
     <section class="view" id="view-localites">
       <div class="section-title">📋 Table des localités <span class="count" id="locCount">0</span></div>
+      <input type="text" id="locSearchInput" class="loc-search" placeholder="🔍 Rechercher une localité…">
       <div class="table-card">
         <div class="table-scroll">
           <table>
             <thead><tr>
-              <th>Localité</th><th>Région</th><th>Zone</th><th>KQI conformes</th><th>% conformité</th><th>Évolution</th><th>Statut</th>
+              <th>Localité</th><th>Région</th><th>Zone</th><th>KQI conformes</th><th>% conformité</th><th>Évolution</th><th>Statut</th><th>Action corrective</th>
             </tr></thead>
             <tbody id="locTableBody"></tbody>
           </table>
@@ -645,6 +680,9 @@ canvas{ max-width:100%; }
 
     <!-- ===== VIEW: ALERTS ===== -->
     <section class="view" id="view-alerts">
+      <div class="section-title">🔮 Alertes prédictives <span class="count" id="predictiveAlertsCount">0</span></div>
+      <div class="alert-list" id="predictiveAlertsList"></div>
+
       <div class="section-title">📉 KPI les plus souvent en cause dans les localités critiques</div>
       <div class="chart-card">
         <div class="chart-wrap" style="height:280px;"><canvas id="alertKpiChart"></canvas></div>
@@ -763,6 +801,7 @@ window.__LOC_COORDS__ = {"AFLAO GAKLI": [6.21122, 1.15517], "AMOUTIVE": [6.13795
 
 
 
+
 /* Data labels: registered globally but off by default; turned on per-chart where it stays readable
    (bar / doughnut charts). Left off for dense multi-line charts (trend, radar, per-KPI evolution)
    where printed numbers would overlap and hurt readability rather than help it. */
@@ -794,6 +833,7 @@ let state = {
 
 let map = null;
 let markerLayer = null;
+let heatLayer = null;
 
 const campaignsAvailable = () => [...new Set(RECORDS.map(r=>r.campN))].sort((a,b)=>a-b);
 const campLabel = (n) => (RECORDS.find(r=>r.campN===n)||{}).camp || n;
@@ -913,6 +953,32 @@ function topDegradedLocalities(recs, campN, n=5){
   return withDelta.sort((a,b)=> a.delta-b.delta).slice(0,n);
 }
 
+/* ===== Alertes prédictives : KPI dont la tendance pointe vers un passage sous le seuil critique ===== */
+function computePredictiveAlerts(campN){
+  const camps = campaignsAvailable();
+  const idx = camps.indexOf(campN);
+  if(idx < 2) return []; // need at least 3 points to trust a trend
+  const last3 = [camps[idx-2], camps[idx-1], camps[idx]];
+  const results = [];
+  KPI_ORDER.forEach(code=>{
+    const rates = last3.map(cn=>{
+      const rows = RECORDS.filter(r=>r.campN===cn && (state.region==='ALL'||r.reg===state.region) && (state.zone==='ALL'||r.zone===state.zone));
+      if(rows.length===0) return null;
+      const sum = rows.reduce((s,r)=> s + (r.kpi[code] ? r.kpi[code][1] : 0), 0);
+      return sum/rows.length*100;
+    });
+    if(rates.some(v=>v===null)) return;
+    const declining = rates[2] < rates[1] && rates[1] < rates[0];
+    const slope = rates[2] - rates[1];
+    const projected = rates[2] + slope;
+    if(declining && rates[2] < 70 && projected < 50){
+      results.push({ code, service: KPI_REF[code].service, label: KPI_REF[code].label,
+        current: rates[2], projected, slope });
+    }
+  });
+  return results;
+}
+
 function computeAlerts(campN, recs){
   const alerts = [];
   const prev = prevCampN(campN);
@@ -1015,10 +1081,12 @@ function render(){
       </tr>`).join('');
   }).join('');
 
-  const sorted = [...recs].sort((a,b)=>a.pct-b.pct);
+  const sorted = [...recs].sort((a,b)=>a.pct-b.pct)
+    .filter(r=> !locSearchTerm || r.loc.toLowerCase().includes(locSearchTerm));
   document.getElementById('locTableBody').innerHTML = sorted.map(r=>{
     const b = badge(r.pct);
     const d = localityDelta(r.loc, campN);
+    const action = getActionStatus(r.loc);
     return `<tr>
       <td>${r.loc}</td>
       <td>${r.reg}</td>
@@ -1027,6 +1095,13 @@ function render(){
       <td class="mono">${r.pct.toFixed(1)}%</td>
       <td>${fmtDelta(d)}</td>
       <td><span class="pill ${b.cls}">${b.txt}</span></td>
+      <td>
+        <select class="action-select ${action}" data-loc="${r.loc.replace(/"/g,'&quot;')}" onchange="setActionStatus(this.dataset.loc, this.value); this.className='action-select '+this.value;">
+          <option value="todo" ${action==='todo'?'selected':''}>À traiter</option>
+          <option value="progress" ${action==='progress'?'selected':''}>En cours</option>
+          <option value="done" ${action==='done'?'selected':''}>Résolu</option>
+        </select>
+      </td>
     </tr>`;
   }).join('');
   document.getElementById('locCount').textContent = sorted.length;
@@ -1036,6 +1111,7 @@ function render(){
   renderServiceCards(recs);
   renderComparaisonCharts(recs, campN);
   renderAlertKpiChart(recs);
+  renderPredictiveAlerts(campN);
   renderGeoCharts(recs);
   renderAlertMap(alerts);
   renderEvolutionExtra();
@@ -1298,23 +1374,35 @@ function renderExecExtra(recs, campN){
       </tr>`).join('') : `<tr><td colspan="4" style="color:var(--gray); text-align:center;">Pas de dégradation notable</td></tr>`;
   }
 
-  // Zone stat cards (Grand Lomé / Hors Lomé / National)
+  // Zone stat cards (Grand Lomé / Hors Lomé / National) with custom internal targets
   const zoneEl = document.getElementById('zoneStatCards');
   if(zoneEl){
     const glRecs = recs.filter(r=>r.zone==='GL');
     const hlRecs = recs.filter(r=>r.zone==='HL');
     const avg = a => a.length ? a.reduce((s,r)=>s+r.pct,0)/a.length : null;
+    const targets = loadTargets();
     const zones = [
-      {label:'Grand Lomé', val: avg(glRecs)},
-      {label:'Hors Grand Lomé', val: avg(hlRecs)},
-      {label:'National', val: avg(recs)}
+      {key:'GL', label:'Grand Lomé', val: avg(glRecs)},
+      {key:'HL', label:'Hors Grand Lomé', val: avg(hlRecs)},
+      {key:'NAT', label:'National', val: avg(recs)}
     ];
     zoneEl.innerHTML = zones.map(z=>{
       const b = z.val===null ? {cls:'warn',txt:'—'} : badge(z.val);
+      const target = targets[z.key];
+      const deltaHtml = (target!==undefined && z.val!==null)
+        ? fmtDelta(z.val - target)
+        : '';
       return `<div class="zone-stat-card">
         <div class="zone-stat-val" style="color:${z.val===null?'var(--gray)':badgeColor(z.val)}">${z.val!==null? z.val.toFixed(1)+'%':'—'}</div>
         <div class="zone-stat-label">${z.label}</div>
         <div class="zone-stat-badge ${b.cls}">${z.val===null?'':(b.cls==='ok'?'✓ Conforme':'⚠ Alerte')}</div>
+        <div class="zone-target-row">
+          <span>Objectif :</span>
+          <input type="number" class="zone-target-input" min="0" max="100" value="${target!==undefined?target:''}"
+            placeholder="—" onchange="setZoneTarget('${z.key}', this.value)">
+          <span>%</span>
+          ${deltaHtml? `<span class="zone-target-delta">${deltaHtml}</span>` : ''}
+        </div>
       </div>`;
     }).join('');
   }
@@ -1589,6 +1677,20 @@ function renderAlertKpiChart(recs){
   });
 }
 
+function renderPredictiveAlerts(campN){
+  const el = document.getElementById('predictiveAlertsList');
+  if(!el) return;
+  const alerts = computePredictiveAlerts(campN);
+  document.getElementById('predictiveAlertsCount').textContent = alerts.length;
+  el.innerHTML = alerts.length
+    ? alerts.map(a=>`
+      <div class="alert-card drop">
+        <div class="alert-top"><strong>${a.code}</strong><span class="alert-reg">${a.service}</span></div>
+        <div class="alert-msg">${a.label} : ${a.current.toFixed(1)}% actuellement, tendance vers ${a.projected.toFixed(1)}% à la prochaine campagne si la baisse se poursuit.</div>
+      </div>`).join('')
+    : `<div class="alert-empty">Aucun KPI ne montre de tendance préoccupante sur les 3 dernières campagnes.</div>`;
+}
+
 const SERVICE_META = {
   'VOIX': {color:'#14276B', chartId:'chartVoix', tblId:'tblVoix', avgId:'avgVoix', regChartId:'voixRegionChart', cardsId:'voixKpiCards'},
   'DATA 3G': {color:'#0E7C86', chartId:'chart3G', tblId:'tbl3G', avgId:'avg3G', regChartId:'g3RegionChart', cardsId:'g3KpiCards'},
@@ -1716,7 +1818,18 @@ function ensureMap(){
     attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
   }).addTo(map);
   markerLayer = L.layerGroup().addTo(map);
+  if(typeof L.heatLayer === 'function'){
+    heatLayer = L.heatLayer([], { radius:22, blur:18, maxZoom:12, gradient:{0.3:'#1E9E6B',0.6:'#F5A623',1.0:'#E1483D'} });
+  }
 }
+
+let mapMode = 'points';
+window.setMapMode = function(mode){
+  mapMode = mode;
+  document.getElementById('mapModePoints').classList.toggle('active', mode==='points');
+  document.getElementById('mapModeHeat').classList.toggle('active', mode==='heat');
+  drawMapMarkers(lastValidRecs);
+};
 
 function isInTogo(lat, lon){
   if(lat<TOGO_STRICT.latMin || lat>TOGO_STRICT.latMax || lon<TOGO_STRICT.lonMin || lon>TOGO_STRICT.lonMax) return false;
@@ -1752,6 +1865,16 @@ function renderMap(recs){
 function drawMapMarkers(valid){
   ensureMap();
   markerLayer.clearLayers();
+  if(heatLayer && map.hasLayer(heatLayer)) map.removeLayer(heatLayer);
+
+  if(mapMode === 'heat' && heatLayer){
+    // Intensity = inverse of conformity: critical localities weigh most heavily on the heat layer.
+    const points = valid.map(r=> [r.lat, r.lon, Math.max(0.15, (100-r.pct)/100)]);
+    heatLayer.setLatLngs(points);
+    heatLayer.addTo(map);
+    return;
+  }
+
   const ordered = [...valid].sort((a,b)=> (a.pct<50?1:0) - (b.pct<50?1:0));
   ordered.forEach(r=>{
     const color = badgeColor(r.pct);
@@ -1874,6 +1997,42 @@ function safeStorage(){
 }
 const LS = safeStorage();
 
+/* ===== Recherche de localité ===== */
+let locSearchTerm = '';
+
+/* ===== Suivi des actions correctives (par localité, stocké localement dans ce navigateur) ===== */
+const ACTIONS_KEY = 'yasQoeActions';
+function loadActions(){
+  if(!LS) return {};
+  try{ return JSON.parse(LS.getItem(ACTIONS_KEY) || '{}'); }catch(e){ return {}; }
+}
+function getActionStatus(loc){
+  const store = loadActions();
+  return store[loc] || 'todo';
+}
+window.setActionStatus = function(loc, status){
+  if(!LS) return;
+  const store = loadActions();
+  store[loc] = status;
+  LS.setItem(ACTIONS_KEY, JSON.stringify(store));
+};
+
+/* ===== Objectifs internes personnalisés (par zone) ===== */
+const TARGETS_KEY = 'yasQoeTargets';
+function loadTargets(){
+  if(!LS) return {};
+  try{ return JSON.parse(LS.getItem(TARGETS_KEY) || '{}'); }catch(e){ return {}; }
+}
+window.setZoneTarget = function(key, value){
+  if(!LS) return;
+  const targets = loadTargets();
+  const num = parseFloat(value);
+  if(value==='' || isNaN(num)) delete targets[key];
+  else targets[key] = Math.max(0, Math.min(100, num));
+  LS.setItem(TARGETS_KEY, JSON.stringify(targets));
+  render();
+};
+
 function stopAutoRefresh(){ if(autoRefreshTimer){ clearInterval(autoRefreshTimer); autoRefreshTimer = null; } }
 function startAutoRefresh(url){
   stopAutoRefresh();
@@ -1951,6 +2110,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
   });
 
   document.getElementById('campSelect').addEventListener('change', e=>{ state.campN = parseInt(e.target.value,10); render(); });
+  const searchInput = document.getElementById('locSearchInput');
+  if(searchInput){
+    let searchDebounce;
+    searchInput.addEventListener('input', e=>{
+      clearTimeout(searchDebounce);
+      const val = e.target.value;
+      searchDebounce = setTimeout(()=>{
+        locSearchTerm = val.trim().toLowerCase();
+        render();
+      }, 200);
+    });
+  }
   document.getElementById('regionSelect').addEventListener('change', e=>{ state.region = e.target.value; render(); });
   document.querySelectorAll('.chip[data-zone]').forEach(ch=>{
     ch.addEventListener('click', ()=>{ state.zone = ch.dataset.zone; render(); });
@@ -1981,6 +2152,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('closeAlertDetail').addEventListener('click', ()=> adModal.classList.remove('show'));
   adModal.addEventListener('click', e=>{ if(e.target===adModal) adModal.classList.remove('show'); });
 });
+
 
 
 
