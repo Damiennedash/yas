@@ -415,6 +415,8 @@ canvas{ max-width:100%; }
           <div class="chip" data-zone="HL">Hors Lomé</div>
         </div>
         <button class="icon-btn" id="refreshBtn" title="Actualiser">⟳</button>
+        <button class="icon-btn" id="shareLinkBtn" title="Copier un lien vers cette vue filtrée" onclick="shareFilteredLink()">🔗</button>
+        <button class="icon-btn" id="whatsappBtn" title="Résumé WhatsApp" onclick="shareWhatsAppSummary()">📱</button>
         <button class="icon-btn" id="exportPdfBtn" title="Exporter en PDF" onclick="window.print()">🖨️</button>
         <button class="icon-btn" id="settingsBtn" title="Connecter Google Sheet">⚙</button>
       </div>
@@ -489,6 +491,15 @@ canvas{ max-width:100%; }
         <div class="chart-card">
           <h3>Carte des performances</h3>
           <div class="chart-wrap"><canvas id="perfBubbleChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="section-title">📸 Comparaison Avant / Après <span class="count" id="snapshotCount">0</span></div>
+      <div class="chart-card">
+        <div id="snapshotPanel"></div>
+        <div class="modal-actions" style="margin-top:10px;">
+          <button class="btn primary" onclick="saveSnapshot()">📸 Enregistrer l'état actuel comme "Avant"</button>
+          <button class="btn ghost" onclick="clearSnapshot()">Effacer</button>
         </div>
       </div>
 
@@ -610,8 +621,13 @@ canvas{ max-width:100%; }
           <div class="chart-wrap"><canvas id="zoneCompChart"></canvas></div>
         </div>
         <div class="chart-card">
-          <h3>Comparaison des 16 KPI — actuelle vs précédente</h3>
-          <div class="chart-wrap" style="height:320px;"><canvas id="radarChart"></canvas></div>
+          <h3>Comparaison des 16 KPI — <span id="radarCampLabels">actuelle vs précédente</span></h3>
+          <div class="radar-picker">
+            <select id="radarCampA" title="Campagne A" onchange="onRadarCampChange()"></select>
+            <span>vs</span>
+            <select id="radarCampB" title="Campagne B" onchange="onRadarCampChange()"></select>
+          </div>
+          <div class="chart-wrap" style="height:300px;"><canvas id="radarChart"></canvas></div>
         </div>
         <div class="chart-card">
           <h3>🌡️ Matrice région × service</h3>
@@ -789,6 +805,9 @@ window.__TOGO_REF_POINTS__ = [[6.2112, 1.1552], [6.138, 1.231], [6.1242, 1.2257]
 window.__LOC_COORDS__ = {"AFLAO GAKLI": [6.21122, 1.15517], "AMOUTIVE": [6.13795, 1.23104], "ARRONDISSEMENT-1": [6.12415, 1.22568], "ARRONDISSEMENT-2": [6.17714, 1.29391], "ARRONDISSEMENT-3": [6.17066, 1.34042], "ARRONDISSEMENT-4": [6.13881, 1.22054], "ARRONDISSEMENT-5": [6.15668, 1.20571], "BAGUIDA": [6.16392, 1.32658], "LEGBASSITO": [6.26937, 1.14961], "TOGBLEKOPE": [6.28287, 1.19365], "ADETIKOPE": [6.32285, 1.21722], "AFAGNANGAN": [6.4929, 1.63863], "AGBATA": [6.19466, 1.39176], "AGBODRAFO": [6.21058, 1.4815], "AGOME-GLOZOU": [6.55258, 1.66678], "AHEPE ": [6.60867, 1.39907], "ANEHO": [6.22728, 1.58142], "DALAVE": [6.85442, 0.75217], "DAVIE": [6.38548, 1.2029], "DJAGBLE": [6.75285, 1.21923], "EKPUI": [6.24928, 1.44742], "GBODJOME": [6.19417, 1.41643], "GBOTO-ZEVE": [6.70033, 1.47825], "KINI-KONDJI": [6.60479, 1.54053], "KPEME": [6.43917, 1.17897], "KPETSOU": [6.51463, 1.57605], "KPOGAN-AGBETIKO": [6.1931, 1.38051], "KPOTEME": [6.53362, 1.5847], "SEVAGAN": [6.29847, 1.42822], "SEWATSRIKOPE-KPEME": [6.20898, 1.5039], "TABLIGBO": [6.58795, 1.49992], "TOGOVILLE": [6.23197, 1.4812], "VOGAN": [6.3335, 1.53205], "AGBATITOE": [7.07463, 1.15262], "AGOME-TOMEGBE": [6.95308, 0.5574], "AGOME YOH": [6.9438, 0.59705], "AGOU-GADZEPE": [6.84596, 0.71468], "AGOU NYOGBO": [6.87692, 0.72645], "AMLAME": [7.46328, 0.90402], "ATAKPAME-WOUDOU": [7.50676, 1.15321], "ATCHAVE": [6.86073, 1.21567], "KAMINA": [8.09422, 1.56082], "KOUMAWOU": [6.84753, 0.72547], "KPEKPLEME": [7.33153, 1.62432], "LATHO": [7.11697, 1.1279], "NOTSE": [6.95865, 1.17247], "PETSI": [6.86303, 0.76813], "SALIGBE": [7.22516, 1.62506], "TADO": [7.14598, 1.59158], "TAKOUKOPE/KPONOU": [7.0176, 1.17678], "TEMEDJA": [7.52065, 1.06973], "TOMEGBE AKEBOU": [7.87141, 0.81469], "TSAVE": [6.93753, 1.31037], "TSIMANE": [6.64087, 1.26407], "BOULOHOU": [8.77248, 0.67067], "DJARKPANGA": [8.77878, 0.56287], "KOLOWARE": [8.9569, 1.2896], "KPARATAOU": [8.95183, 1.1988], "AGBANDE-YAKA": [9.7519, 1.10509], "ASSERE-BAS ": [9.79907, 1.29801], "BANDJELI": [9.42521, 0.62274], "BASSAR": [9.25718, 0.7843], "BOUTCHATCHAL": [9.72227, 0.57408], "GNEZIMDE": [8.71683, 0.5872], "GUERIN-KOUKA": [9.68832, 0.60978], "KABOU": [9.45668, 0.8121], "KAGNISSI": [9.77117, 1.32132], "KALANGA": [9.2649, 0.70175], "KARA": [9.54614, 1.17605], "KEMERIDA": [9.66308, 1.35198], "KETAO": [9.65877, 1.30845], "KIDJABOUN": [9.78147, 0.46568], "KOUFITOUGOU": [10.0718, 1.13078], "KPANGAM": [8.81853, 0.59998], "KPANKPANDE": [9.878, 0.3955], "NADOBA": [10.1474, 1.0713], "PAGOUDA": [9.75258, 1.32808], "SANDA-AFOHOU": [9.48277, 0.9415], "SARA": [9.44473, 0.82892], "YAKA": [9.75835, 1.10185], "ZONGO": [9.76197, 1.11055], "BOMBENGOU": [10.7463, 0.52203], "BOPAK": [10.68622, 0.12913], "BORGOU-CENTRE": [10.75918, 0.57298], "BOUMBOUMIGOU": [10.50637, 0.18599], "CINKASSE": [11.11223, 0.01165], "GANDO": [10.31953, 0.73296], "KORBONGOU-CENTRE": [10.91592, 0.30888], "KPIERIK": [10.67897, 0.14887], "MANGO": [10.37393, 0.47366], "NAGBENI-CENTRE": [10.61255, 0.3956], "NAKPABAK": [10.75618, 0.09313], "NAMONI": [10.33167, 0.74237], "NASSIAGOU": [10.7083, 0.13263], "NAYERGOU BAS": [10.50123, 0.16207], "TANDJOARE": [10.65901, 0.2104], "ATAKPAME WOGOU": [7.50676, 1.15321], "KPONOU": [7.0176, 1.17678], "KUMAWU": [6.84753, 0.72547], "YORGOU": [11.04174, 0.12092], "AFLAO SAGBADO": [6.18765, 1.12252], "AGOENYIVE": [6.23405, 1.18011], "ZANGUERA": [6.23047, 1.10133], "ALOKOEGBE": [6.4457, 1.0837], "ATIVIME": [6.42943, 1.1079], "TODOME": [6.47823, 1.61675], "KEVE": [6.43068, 0.93152], "KOVIE": [6.34062, 1.11052], "WLI": [6.41183, 1.16293], "KPADAPE": [6.84282, 0.59453], "TOVEGAN": [6.5686, 0.89758], "AGBELOUVE": [6.67932, 1.16572], "GAPE-CENTRE": [6.60212, 1.10347], "AKOUMAPE-APEGAN": [6.38498, 1.43925], "YOMETCHIN": [6.48255, 1.0102], "GATI": [6.4929, 1.32938], "TSEVIE": [6.43295, 1.20733], "KOUVE-GBOLI": [6.65747, 1.40213], "HAVE": [6.49337, 1.2521], "ZAFI": [7.57105, 1.03833], "BADOU": [7.58712, 0.60862], "KOLO KOPE": [7.79573, 1.28858], "KOUGNONHOU ": [7.65843, 0.79392], "KABAGNI": [7.88453, 0.77423], "ANIE": [7.76063, 1.19313], "LAMA-WERE": [8.47322, 1.06145], "YOMABOUA": [8.38972, 0.9916], "DOUFOULI": [8.30803, 0.92857], "BLITTA": [8.3236, 0.98222], "PAGALA-GARE": [8.18472, 0.96957], "YALOUMBE": [8.30018, 1.07825], "ATAKPAME (GNAGNA) ": [7.53167, 1.13263], "ELAVAGNON": [7.52685, 1.09412], "SOKODE": [8.97798, 1.1449], "KOULOUMI": [8.95407, 1.51607], "TCHAMBA": [9.02952, 1.4169], "KOUPATIEGOU": [10.09238, 1.11217], "NIAMTOUGOU": [9.74375, 1.11612], "KANTE CENTRE": [9.95848, 1.04182], "ANYRON": [6.51593, 0.98432], "LILIKOPE": [6.55592, 1.1844], "APEGNIGBE": [6.31068, 1.42658], "HAHOTOE": [6.361, 1.40848], "TOHOUN": [7.02345, 1.61462], "KPALIME": [6.90977, 0.62987], "ASRAMA": [7.00478, 1.4048], "DANYI-APEYEME": [7.20275, 0.69391], "DATCHA": [7.43267, 1.16177], "ADETA": [7.1286, 0.73137], "AMOU-OBLO": [7.38765, 0.87118], "NAGBETO": [7.44061, 1.40192], "SOLAO": [8.77443, 1.13173], "TCHAWARE": [8.82322, 0.98463], "TINDJASSE": [8.36733, 0.91703], "YARA KABYE": [8.80343, 1.07235], "PYA": [9.6452, 1.1418], "SARAKAWA": [9.62446, 0.97937], "ESSE GONDJI": [6.71071, 1.56419], "KINI KONDJI": [6.608, 1.54353], "BOULADE": [9.42788, 1.21764], "NABOUANE": [9.71456, 0.47483], "BOUMAN": [9.70029, 0.51533], "SOTOUBOUA": [8.56268, 0.97729], "HELOTA": [9.92869, 0.77218], "OSSACRE": [10.07273, 0.71488], "ATCHANGBADE": [9.47938, 1.13347], "AWANDJELO": [9.45071, 1.2116], "KADJALLA": [9.79999, 0.97478], "BAFILO": [9.35681, 1.24819], "AGOULOUDE": [9.12204, 1.32505], "WASSARABO": [9.00116, 1.25872], "BAPURE-CENTRE": [9.52509, 0.61598], "DANTCHO": [9.00178, 1.48382], "NAWARE": [9.61486, 0.62718], "MEWEDE": [8.41136, 0.89978], "SAIBOUDE": [8.61197, 0.46991], "TITIGBE": [8.61374, 1.10337], "KASSENA": [8.88703, 1.08383], "ATAKPAME": [7.53167, 1.13263], "AVEDJE": [7.46346, 1.13552], "MALIKA": [8.27013, 1.04275], "TONDJA": [8.27926, 0.95615], "AKABA PLATEAU": [7.94996, 1.04603], "KPATEGAN": [7.33201, 1.0482], "YELOUM LEKOHAN": [8.16534, 1.04492], "AKPARE": [7.47241, 1.32342], "GBADJAHE": [7.84814, 1.30265], "DJEMEGNI": [6.93764, 1.25467], "WOME": [6.84783, 0.57227], "GBALAVE": [6.87696, 0.61777], "KPESSI": [8.06574, 1.2698], "OKPAHOE": [6.97098, 1.51502], "TETTETOU": [7.01361, 1.50228], "ADANGBE": [6.52593, 1.29705], "AGBAVI": [6.18408, 1.39777], "ESSE-ZOGBEDJI": [6.58281, 1.32913], "GOUMOUKOPE": [6.21343, 1.53308], "AVEGAME": [6.62221, 1.54138], "TOKPLI": [6.66289, 1.59752], "BADOUGBE": [6.23528, 1.51373], "KETA AKODA": [6.24416, 1.55355], "BAGBE-GARE": [6.33601, 1.02528], "ATIVE KOSSIDAME": [6.42631, 1.4952], "DAGBATI": [6.48186, 1.49705], "AGOUDJA": [6.40074, 0.99863], "DJOGBEPIME": [6.44861, 0.98038], "LOGOWOME": [6.47374, 1.66468], "MATCHALLE": [6.49006, 1.6535], "YOBO-SEDJRO": [6.41368, 1.34137], "KUMA-KONDA": [6.95313, 0.58097], "NYASSIVE": [6.57196, 1.04635], "KUMA ADMA": [6.97574, 0.59542], "TSIVIEPE": [6.40881, 0.91558], "ANDO": [6.43201, 0.88321], "BOLOU KPETA": [6.45096, 1.09315], "BOLOUGAN": [6.43043, 1.1743], "DOKPLALA": [6.34435, 0.98124], "DZOLO": [6.37553, 0.89268], "KPANAHORE": [9.22115, 1.36008], "KINAKPATEOU": [9.7394, 0.65747], "NAGBIDJABO": [9.64082, 0.55378], "ASSOUKOKO": [8.00698, 0.65705], "BOWOUDA": [9.03787, 1.25442], "KOUMEA": [9.71325, 1.205], "ALEDJO-KADARA": [9.25538, 1.2083], "NANDJOUDJA": [9.88699, 0.75698], "PANGOUDA": [10.00713, 0.77877], "SOLIMBIA": [8.76243, 1.61643], "BROUKOU": [9.73948, 0.91953], "TCHORE": [9.8464, 1.0177], "DAPAONG": [10.86662, 0.20306], "GBANZABADE": [8.60037, 0.49697], "AOUDA": [8.7331, 1.04847], "AFEM-BOUSSOU": [9.12308, 1.54167], "AFFO SALA KOPE": [8.44125, 1.28347], " GASSI GASSI": [8.19108, 0.94271], "HEZOUDE": [8.43572, 0.89575], "TCHIFAMA": [8.18274, 0.81139], "ADOMI-ABRA": [7.4153, 0.76908], "KONIGBO": [7.7845, 1.16362], "OKE ADOGBENOU": [7.7367, 1.43212], "ASSANTE": [7.43225, 1.3645], "HOMAGAN": [7.45567, 1.59113], "ATIGOZA": [7.68602, 0.84542], "BROUNFOU": [7.73565, 0.67717], "BOLOU KLOKPOE": [6.47588, 1.07214], "OGBATANAWLOU": [7.35605, 1.08677], "LAVIE AGOVIEPE": [7.01965, 0.69712], "AFAGNANGAN-GBLETA": [6.49449, 1.63945], "WAGBA": [7.05057, 1.62638], "MASSEDA": [6.44607, 1.67593], "AGOME-SEVA": [6.47128, 1.74118], "SEKO": [6.26772, 1.70016], "SEVAME": [6.28883, 1.71649], "AGUIDAGBADE": [9.01812, 1.28117], "BITCHABE": [9.3234, 0.58578], "HALOUKPANBOUNDOU": [8.6968, 1.12122], "SAGBADAI": [8.79889, 1.07017], "BROUNFOUH": [7.73565, 0.67717]};
 </script>
 <script>
+
+
+
 
 
 
@@ -1349,6 +1368,7 @@ function renderEvolutionExtra(){
 
 /* ===== Comparaison tab: donut, zone comparison, 16-KPI radar ===== */
 function renderExecExtra(recs, campN){
+  renderSnapshotPanel(recs, campN);
   const { improved, degraded } = kpiEvolutionSummary(recs, campN);
   const impEl = document.getElementById('kpiImprovedList');
   const degEl = document.getElementById('kpiDegradedList');
@@ -1497,30 +1517,60 @@ function renderComparaisonCharts(recs, campN){
     });
   }
 
-  const prev = prevCampN(campN);
-  const kt = kpiTable(recs);
-  const prevKt = prev!==null ? kpiTable(filtered(prev)) : null;
-  const ctxR = document.getElementById('radarChart');
-  if(ctxR){
-    if(charts.radar) charts.radar.destroy();
-    const datasets = [{
-      label: campLabel(campN), data: kt.map(k=>k.confRate),
-      borderColor:'#FFC800', backgroundColor:'rgba(255,200,0,.25)', borderWidth:2, pointBackgroundColor:'#FFC800'
-    }];
-    if(prevKt){
-      datasets.push({
-        label: campLabel(prev), data: prevKt.map(k=>k.confRate),
-        borderColor:'#0E1B3D', backgroundColor:'rgba(14,27,61,.12)', borderWidth:2, pointBackgroundColor:'#0E1B3D'
-      });
-    }
-    charts.radar = new Chart(ctxR, {
-      type:'radar',
-      data:{ labels: kt.map(k=>k.code), datasets },
-      options:{ responsive:true, maintainAspectRatio:false,
-        plugins:{legend:{position:'bottom', labels:{font:{family:'Inter',size:11}, usePointStyle:true, boxWidth:8}}},
-        scales:{ r:{min:0,max:100, ticks:{stepSize:25, backdropColor:'transparent', font:{size:9}}, pointLabels:{font:{size:10,weight:'600'}}, grid:{color:'#EEF0F5'}} } }
-    });
+  renderRadarChart();
+}
+
+let radarCampChoice = { a: null, b: null };
+
+function populateRadarSelectors(){
+  const camps = campaignsAvailable();
+  const selA = document.getElementById('radarCampA');
+  const selB = document.getElementById('radarCampB');
+  if(!selA || !selB || camps.length===0) return;
+  selA.innerHTML = camps.map(cn=>`<option value="${cn}" ${cn===radarCampChoice.a?'selected':''}>${campLabel(cn)}</option>`).join('');
+  selB.innerHTML = camps.map(cn=>`<option value="${cn}" ${cn===radarCampChoice.b?'selected':''}>${campLabel(cn)}</option>`).join('');
+}
+
+window.onRadarCampChange = function(){
+  const a = document.getElementById('radarCampA');
+  const b = document.getElementById('radarCampB');
+  if(a) radarCampChoice.a = parseInt(a.value,10);
+  if(b) radarCampChoice.b = parseInt(b.value,10);
+  renderRadarChart();
+};
+
+/* ===== Comparaison de deux campagnes au choix (radar) ===== */
+function renderRadarChart(){
+  const camps = campaignsAvailable();
+  if(camps.length===0) return;
+  const currentCampN = state.campN!==null ? state.campN : camps[camps.length-1];
+  if(radarCampChoice.a===null || radarCampChoice.b===null || !camps.includes(radarCampChoice.a) || !camps.includes(radarCampChoice.b)){
+    const prev = prevCampN(currentCampN);
+    radarCampChoice.a = prev!==null ? prev : currentCampN;
+    radarCampChoice.b = currentCampN;
   }
+  populateRadarSelectors();
+
+  const ktA = kpiTable(filtered(radarCampChoice.a));
+  const ktB = kpiTable(filtered(radarCampChoice.b));
+  const labelEl = document.getElementById('radarCampLabels');
+  if(labelEl) labelEl.textContent = `${campLabel(radarCampChoice.b)} vs ${campLabel(radarCampChoice.a)}`;
+
+  const ctxR = document.getElementById('radarChart');
+  if(!ctxR) return;
+  if(charts.radar) charts.radar.destroy();
+  charts.radar = new Chart(ctxR, {
+    type:'radar',
+    data:{ labels: ktB.map(k=>k.code), datasets:[
+      { label: campLabel(radarCampChoice.b), data: ktB.map(k=>k.confRate),
+        borderColor:'#FFC800', backgroundColor:'rgba(255,200,0,.25)', borderWidth:2, pointBackgroundColor:'#FFC800' },
+      { label: campLabel(radarCampChoice.a), data: ktA.map(k=>k.confRate),
+        borderColor:'#0E1B3D', backgroundColor:'rgba(14,27,61,.12)', borderWidth:2, pointBackgroundColor:'#0E1B3D' }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom', labels:{font:{family:'Inter',size:11}, usePointStyle:true, boxWidth:8}}},
+      scales:{ r:{min:0,max:100, ticks:{stepSize:25, backdropColor:'transparent', font:{size:9}}, pointLabels:{font:{size:10,weight:'600'}}, grid:{color:'#EEF0F5'}} } }
+  });
 }
 
 /* ===== Comparaison Zones: région × service heatmap + comparative table ===== */
@@ -1874,11 +1924,17 @@ function drawMapMarkers(valid){
     ordered.forEach(r=>{
       const color = badgeColor(r.pct);
       const intensity = Math.max(0.12, (100-r.pct)/100); // more critical → more opaque/"hotter"
+      const popupHtml = `<strong>${r.loc}</strong><br>${r.reg} · ${r.zone==='GL'?'Grand Lomé':'Hors Lomé'}<br>Conformité : <b style="color:${color}">${r.pct.toFixed(1)}%</b><br>${r.conf}/${r.tot} KQI conformes`;
       L.circle([r.lat, r.lon], {
         radius: 11000, // metres — wide enough that nearby localities visually blend together
         color: 'transparent', weight:0,
         fillColor: color, fillOpacity: intensity*0.55
-      }).addTo(markerLayer);
+      }).bindPopup(popupHtml).addTo(markerLayer);
+      // Small solid dot at the exact center: the translucent halo is hard to tap precisely,
+      // this gives a reliable click/tap target that also shows the true location.
+      L.circleMarker([r.lat, r.lon], {
+        radius: 4, fillColor: color, color:'#fff', weight:1, fillOpacity:0.95
+      }).bindPopup(popupHtml).addTo(markerLayer);
     });
     return;
   }
@@ -2027,6 +2083,62 @@ window.setActionStatus = function(loc, status){
 
 /* ===== Objectifs internes personnalisés (par zone) ===== */
 const TARGETS_KEY = 'yasQoeTargets';
+/* ===== Snapshot comparatif Avant/Après ===== */
+const SNAPSHOT_KEY = 'yasQoeSnapshot';
+function loadSnapshot(){
+  if(!LS) return null;
+  try{ return JSON.parse(LS.getItem(SNAPSHOT_KEY) || 'null'); }catch(e){ return null; }
+}
+window.saveSnapshot = function(){
+  if(!LS) return;
+  const camps = campaignsAvailable();
+  const campN = state.campN!==null ? state.campN : camps[camps.length-1];
+  const recs = filtered(campN);
+  const stats = globalStats(recs);
+  const snap = {
+    date: new Date().toISOString(),
+    campLabel: campLabel(campN),
+    region: state.region, zone: state.zone,
+    avg: stats.avg, ok: stats.ok, warn: stats.warn, crit: stats.crit, n: stats.n
+  };
+  LS.setItem(SNAPSHOT_KEY, JSON.stringify(snap));
+  render();
+};
+window.clearSnapshot = function(){
+  if(LS) LS.removeItem(SNAPSHOT_KEY);
+  render();
+};
+function renderSnapshotPanel(recs, campN){
+  const el = document.getElementById('snapshotPanel');
+  if(!el) return;
+  const snap = loadSnapshot();
+  document.getElementById('snapshotCount').textContent = snap ? '1' : '0';
+  if(!snap){
+    el.innerHTML = `<div class="alert-empty" style="border-color:#C7CEEB; background:#F5F7FF; color:#14276B;">
+      Aucune référence enregistrée. Cliquez sur "Enregistrer l'état actuel" pour figer un point de comparaison, puis revenez comparer plus tard.
+    </div>`;
+    return;
+  }
+  const stats = globalStats(recs);
+  const delta = stats.avg - snap.avg;
+  const snapDate = new Date(snap.date).toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit', year:'numeric'});
+  el.innerHTML = `
+    <div class="zone-cards">
+      <div class="zone-stat-card">
+        <div class="zone-stat-val" style="color:var(--gray)">${snap.avg.toFixed(1)}%</div>
+        <div class="zone-stat-label">Avant (${snap.campLabel} · ${snapDate})</div>
+      </div>
+      <div class="zone-stat-card">
+        <div class="zone-stat-val" style="color:${badgeColor(stats.avg)}">${stats.avg.toFixed(1)}%</div>
+        <div class="zone-stat-label">Maintenant (${campLabel(campN)})</div>
+      </div>
+      <div class="zone-stat-card">
+        <div class="zone-stat-val">${fmtDelta(delta)}</div>
+        <div class="zone-stat-label">Évolution</div>
+      </div>
+    </div>`;
+}
+
 function loadTargets(){
   if(!LS) return {};
   try{ return JSON.parse(LS.getItem(TARGETS_KEY) || '{}'); }catch(e){ return {}; }
@@ -2039,6 +2151,79 @@ window.setZoneTarget = function(key, value){
   else targets[key] = Math.max(0, Math.min(100, num));
   LS.setItem(TARGETS_KEY, JSON.stringify(targets));
   render();
+};
+
+/* ===== Partage d'une vue filtrée par lien ===== */
+window.shareFilteredLink = function(){
+  const params = new URLSearchParams();
+  params.set('view', state.view || 'overview');
+  if(state.campN!==null && state.campN!==undefined) params.set('camp', state.campN);
+  if(state.region && state.region!=='ALL') params.set('region', state.region);
+  if(state.zone && state.zone!=='ALL') params.set('zone', state.zone);
+
+  // Carry local annotations (actions correctives, objectifs, snapshot) along in the link itself,
+  // since there's no shared server: this is what lets them propagate automatically to whoever opens it.
+  const payload = { actions: loadActions(), targets: loadTargets(), snapshot: loadSnapshot() };
+  const hasPayload = Object.keys(payload.actions).length>0 || Object.keys(payload.targets).length>0 || payload.snapshot;
+  if(hasPayload) params.set('data', JSON.stringify(payload));
+
+  const url = window.location.origin + window.location.pathname + '?' + params.toString();
+  const btn = document.getElementById('shareLinkBtn');
+  const flash = (msg)=>{ if(!btn) return; const old = btn.textContent; btn.textContent = msg; setTimeout(()=> btn.textContent = old, 1500); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=> flash('✅')).catch(()=> prompt('Copiez ce lien :', url));
+  } else {
+    prompt('Copiez ce lien :', url);
+  }
+};
+
+function applyUrlFilters(){
+  const params = new URLSearchParams(window.location.search);
+  if(!params.has('view') && !params.has('camp') && !params.has('region') && !params.has('zone') && !params.has('data')) return;
+
+  const dataParam = params.get('data');
+  if(dataParam && LS){
+    try{
+      const payload = JSON.parse(dataParam);
+      if(payload.actions) LS.setItem(ACTIONS_KEY, JSON.stringify(payload.actions));
+      if(payload.targets) LS.setItem(TARGETS_KEY, JSON.stringify(payload.targets));
+      if(payload.snapshot) LS.setItem(SNAPSHOT_KEY, JSON.stringify(payload.snapshot));
+    }catch(e){ /* malformed data param, ignore silently */ }
+  }
+
+  const camp = params.get('camp');
+  if(camp!==null && !isNaN(parseInt(camp,10))) state.campN = parseInt(camp,10);
+  const region = params.get('region');
+  if(region) state.region = region;
+  const zone = params.get('zone');
+  if(zone==='GL' || zone==='HL') state.zone = zone;
+  render();
+  const view = params.get('view');
+  if(view) activateView(view);
+}
+
+/* ===== Résumé WhatsApp automatique ===== */
+window.shareWhatsAppSummary = function(){
+  if(RECORDS.length===0){ alert("Aucune donnée chargée pour générer un résumé."); return; }
+  const camps = campaignsAvailable();
+  const campN = state.campN!==null ? state.campN : camps[camps.length-1];
+  const recs = filtered(campN);
+  const stats = globalStats(recs);
+  const alerts = computeAlerts(campN, recs);
+  const critical = alerts.filter(a=>a.sev==='crit').slice(0,5);
+  let msg = `*📡 Yas Togo — QoE ARCEP*\n`;
+  msg += `Campagne : ${campLabel(campN)}\n`;
+  msg += `Taux de conformité global : *${stats.avg.toFixed(1)}%*\n`;
+  msg += `✅ Conformes : ${stats.ok}  ⚠️ Vigilance : ${stats.warn}  🔴 Critiques : ${stats.crit}\n`;
+  if(critical.length){
+    msg += `\n*Alertes critiques :*\n`;
+    critical.forEach(a=> msg += `• ${a.rec.loc} (${a.rec.reg}) — ${a.rec.pct.toFixed(0)}%\n`);
+    if(alerts.filter(a=>a.sev==='crit').length > 5) msg += `… + ${alerts.filter(a=>a.sev==='crit').length-5} autre(s)\n`;
+  } else {
+    msg += `\nAucune localité critique sur cette sélection.\n`;
+  }
+  const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  window.open(url, '_blank');
 };
 
 function stopAutoRefresh(){ if(autoRefreshTimer){ clearInterval(autoRefreshTimer); autoRefreshTimer = null; } }
@@ -2078,6 +2263,34 @@ async function connectSheet(url, opts={}){
 }
 
 /* ===== Events ===== */
+function activateView(viewKey){
+  const nav = document.querySelector(`.navitem[data-view="${viewKey}"]`);
+  if(!nav) return;
+  document.querySelectorAll('.navitem[data-view]').forEach(n=>n.classList.remove('active'));
+  nav.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const viewEl = document.getElementById('view-'+viewKey);
+  if(viewEl) viewEl.classList.add('active');
+  state.view = viewKey;
+  const titles = {overview:"Vue Exécutive", operational:"Vue Opérationnelle", geo:"Vue Géographique",
+    "kpi-voix":"KPI Voix", "kpi-3g":"KPI Data 3G", "kpi-4g":"KPI Data 4G", evolution:"Évolution des KPI",
+    comparaison:"Comparaison Zones", alerts:"Alertes & Dégradations", localites:"Table Localités"};
+  const pt = document.getElementById('pageTitle');
+  if(pt && titles[viewKey]) pt.textContent = titles[viewKey];
+  if(viewKey==='geo'){
+    setTimeout(()=>{
+      ensureMap(); map.invalidateSize(); map.fitBounds(TOGO_VIEW_BOUNDS); drawMapMarkers(lastValidRecs);
+    }, 60);
+  } else if(viewKey==='alerts'){
+    setTimeout(()=>{
+      if(RECORDS.length>0) render();
+      ensureAlertMap(); alertMap.invalidateSize(); alertMap.fitBounds(TOGO_VIEW_BOUNDS);
+    }, 60);
+  } else if(RECORDS.length>0){
+    setTimeout(()=> render(), 30);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', ()=>{
   render();
 
@@ -2085,36 +2298,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const savedUrl = (LS ? LS.getItem(STORAGE_KEY) : null) || DEFAULT_SHEET_URL;
   if(savedUrl){
     document.getElementById('sheetUrl').value = savedUrl;
-    connectSheet(savedUrl);
+    connectSheet(savedUrl).then(()=> applyUrlFilters());
+  } else {
+    applyUrlFilters();
   }
 
   document.querySelectorAll('.navitem[data-view]').forEach(nav=>{
-    nav.addEventListener('click', ()=>{
-      document.querySelectorAll('.navitem[data-view]').forEach(n=>n.classList.remove('active'));
-      nav.classList.add('active');
-      document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-      document.getElementById('view-'+nav.dataset.view).classList.add('active');
-      state.view = nav.dataset.view;
-      if(nav.dataset.view==='geo'){
-        setTimeout(()=>{
-          ensureMap();
-          map.invalidateSize();
-          map.fitBounds(TOGO_VIEW_BOUNDS);
-          drawMapMarkers(lastValidRecs);
-        }, 60);
-      } else if(nav.dataset.view==='alerts'){
-        setTimeout(()=>{
-          if(RECORDS.length>0) render();
-          ensureAlertMap();
-          alertMap.invalidateSize();
-          alertMap.fitBounds(TOGO_VIEW_BOUNDS);
-        }, 60);
-      } else if(RECORDS.length>0){
-        // Charts created while their tab was hidden can end up with a zero-size canvas;
-        // re-rendering once the tab is visible fixes that without any visible flicker.
-        setTimeout(()=> render(), 30);
-      }
-    });
+    nav.addEventListener('click', ()=> activateView(nav.dataset.view));
   });
 
   document.getElementById('campSelect').addEventListener('change', e=>{ state.campN = parseInt(e.target.value,10); render(); });
@@ -2160,6 +2350,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('closeAlertDetail').addEventListener('click', ()=> adModal.classList.remove('show'));
   adModal.addEventListener('click', e=>{ if(e.target===adModal) adModal.classList.remove('show'); });
 });
+
+
+
 
 
 
