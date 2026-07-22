@@ -233,6 +233,11 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
 .service-table td.code{ font-family:'IBM Plex Mono', monospace; color:var(--navy2); font-weight:600; width:64px; }
 .service-table td.lbl{ color:#3A4363; }
 .service-card.full{ max-width:640px; padding:20px 20px 12px; }
+.svc-avg-inline{ color:var(--navy2); font-weight:800; }
+.kpi-mini-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(190px,1fr)); gap:12px; margin-bottom:20px; }
+.kpi-mini-card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.kpi-mini-code{ font-size:11.5px; font-weight:700; color:var(--navy2); text-transform:uppercase; letter-spacing:.3px; margin-bottom:6px; }
+.kpi-mini-val{ font-size:24px; font-weight:800; margin-bottom:6px; }
 .service-card.full .svc-head h4{ font-size:16px; }
 .service-card.full .svc-avg{ font-size:26px; }
 .service-table td.pct{ text-align:right; font-weight:700; width:48px; }
@@ -412,31 +417,58 @@ html, body{ overflow-x:hidden; width:100%; }
 
     <!-- ===== VIEW: KPI VOIX ===== -->
     <section class="view" id="view-kpi-voix">
-      <div class="section-title">🎙️ KPI Voix (4 indicateurs)</div>
-      <div class="service-card full" style="--svc:#14276B;">
-        <div class="svc-head"><h4>🎙️ Voix — taux de conformité</h4><div class="svc-avg" id="avgVoix">—</div></div>
-        <div class="service-chart-wrap" style="height:220px;"><canvas id="chartVoix"></canvas></div>
-        <table class="service-table"><tbody id="tblVoix"></tbody></table>
+      <div class="section-title">🎙️ KPI Voix (4 indicateurs) — moyenne <span class="svc-avg-inline" id="avgVoix">—</span></div>
+      <div class="kpi-mini-grid" id="voixKpiCards"></div>
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Conformité Voix par campagne</h3>
+          <div class="chart-wrap"><canvas id="chartVoix"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Conformité Voix par région</h3>
+          <div class="chart-wrap"><canvas id="voixRegionChart"></canvas></div>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-scroll"><table class="service-table"><tbody id="tblVoix"></tbody></table></div>
       </div>
     </section>
 
     <!-- ===== VIEW: KPI 3G ===== -->
     <section class="view" id="view-kpi-3g">
-      <div class="section-title">📶 KPI Data 3G (6 indicateurs)</div>
-      <div class="service-card full" style="--svc:#0E7C86;">
-        <div class="svc-head"><h4>📶 Data 3G — taux de conformité</h4><div class="svc-avg" id="avg3G">—</div></div>
-        <div class="service-chart-wrap" style="height:220px;"><canvas id="chart3G"></canvas></div>
-        <table class="service-table"><tbody id="tbl3G"></tbody></table>
+      <div class="section-title">📶 KPI Data 3G (6 indicateurs) — moyenne <span class="svc-avg-inline" id="avg3G">—</span></div>
+      <div class="kpi-mini-grid" id="g3KpiCards"></div>
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Conformité Data 3G par campagne</h3>
+          <div class="chart-wrap"><canvas id="chart3G"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Conformité Data 3G par région</h3>
+          <div class="chart-wrap"><canvas id="g3RegionChart"></canvas></div>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-scroll"><table class="service-table"><tbody id="tbl3G"></tbody></table></div>
       </div>
     </section>
 
     <!-- ===== VIEW: KPI 4G ===== -->
     <section class="view" id="view-kpi-4g">
-      <div class="section-title">📡 KPI Data 4G (6 indicateurs)</div>
-      <div class="service-card full" style="--svc:#3B4FD1;">
-        <div class="svc-head"><h4>📡 Data 4G — taux de conformité</h4><div class="svc-avg" id="avg4G">—</div></div>
-        <div class="service-chart-wrap" style="height:220px;"><canvas id="chart4G"></canvas></div>
-        <table class="service-table"><tbody id="tbl4G"></tbody></table>
+      <div class="section-title">📡 KPI Data 4G (6 indicateurs) — moyenne <span class="svc-avg-inline" id="avg4G">—</span></div>
+      <div class="kpi-mini-grid" id="g4KpiCards"></div>
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Conformité Data 4G par campagne</h3>
+          <div class="chart-wrap"><canvas id="chart4G"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Conformité Data 4G par région</h3>
+          <div class="chart-wrap"><canvas id="g4RegionChart"></canvas></div>
+        </div>
+      </div>
+      <div class="table-card">
+        <div class="table-scroll"><table class="service-table"><tbody id="tbl4G"></tbody></table></div>
       </div>
     </section>
 
@@ -604,6 +636,7 @@ window.__SUGGESTIONS__ = {
 window.__TOGO_REF_POINTS__ = [[6.2112, 1.1552], [6.138, 1.231], [6.1242, 1.2257], [6.1771, 1.2939], [6.1707, 1.3404], [6.1388, 1.2205], [6.1567, 1.2057], [6.1639, 1.3266], [6.2694, 1.1496], [6.2829, 1.1937], [6.3228, 1.2172], [6.4929, 1.6386], [6.1947, 1.3918], [6.2106, 1.4815], [6.5526, 1.6668], [6.6087, 1.3991], [6.2273, 1.5814], [6.8544, 0.7522], [6.3855, 1.2029], [6.7528, 1.2192], [6.2493, 1.4474], [6.1942, 1.4164], [6.7003, 1.4783], [6.6048, 1.5405], [6.4392, 1.179], [6.5146, 1.576], [6.1931, 1.3805], [6.5336, 1.5847], [6.2985, 1.4282], [6.209, 1.5039], [6.588, 1.4999], [6.232, 1.4812], [6.3335, 1.532], [7.0746, 1.1526], [6.9531, 0.5574], [6.9438, 0.597], [6.846, 0.7147], [6.8769, 0.7265], [7.4633, 0.904], [7.5068, 1.1532], [6.8607, 1.2157], [8.0942, 1.5608], [6.8475, 0.7255], [7.3315, 1.6243], [7.117, 1.1279], [6.9586, 1.1725], [6.863, 0.7681], [7.2252, 1.6251], [7.146, 1.5916], [7.0176, 1.1768], [7.5206, 1.0697], [7.8714, 0.8147], [6.9375, 1.3104], [6.6409, 1.2641], [8.7725, 0.6707], [8.7788, 0.5629], [8.9569, 1.2896], [8.9518, 1.1988], [9.7519, 1.1051], [9.7991, 1.298], [9.4252, 0.6227], [9.2572, 0.7843], [9.7223, 0.5741], [8.7168, 0.5872], [9.6883, 0.6098], [9.4567, 0.8121], [9.7712, 1.3213], [9.2649, 0.7017], [9.5461, 1.1761], [9.6631, 1.352], [9.6588, 1.3084], [9.7815, 0.4657], [10.0718, 1.1308], [8.8185, 0.6], [9.878, 0.3955], [10.1474, 1.0713], [9.7526, 1.3281], [9.4828, 0.9415], [9.4447, 0.8289], [9.7584, 1.1018], [9.762, 1.1105], [10.7463, 0.522], [10.6862, 0.1291], [10.7592, 0.573], [10.5064, 0.186], [11.1122, 0.0117], [10.3195, 0.733], [10.9159, 0.3089], [10.679, 0.1489], [10.3739, 0.4737], [10.6126, 0.3956], [10.7562, 0.0931], [10.3317, 0.7424], [10.7083, 0.1326], [10.5012, 0.1621], [10.659, 0.2104], [7.5068, 1.1532], [7.0176, 1.1768], [6.8475, 0.7255], [11.0417, 0.1209], [6.1876, 1.1225], [6.234, 1.1801], [6.2305, 1.1013], [6.4457, 1.0837], [6.4294, 1.1079], [6.4782, 1.6167], [6.4307, 0.9315], [6.3406, 1.1105], [6.4118, 1.1629], [6.8428, 0.5945], [6.5686, 0.8976], [6.6793, 1.1657], [6.6021, 1.1035], [6.385, 1.4392], [6.4825, 1.0102], [6.4929, 1.3294], [6.4329, 1.2073], [6.6575, 1.4021], [6.4934, 1.2521], [7.571, 1.0383], [7.5871, 0.6086], [7.7957, 1.2886], [7.6584, 0.7939], [7.8845, 0.7742], [7.7606, 1.1931], [8.4732, 1.0615], [8.3897, 0.9916], [8.308, 0.9286], [8.3236, 0.9822], [8.1847, 0.9696], [8.3002, 1.0782], [7.5317, 1.1326], [7.5268, 1.0941], [8.978, 1.1449], [8.9541, 1.5161], [9.0295, 1.4169], [10.0924, 1.1122], [9.7438, 1.1161], [9.9585, 1.0418], [6.5159, 0.9843], [6.5559, 1.1844], [6.3107, 1.4266], [6.361, 1.4085], [7.0235, 1.6146], [6.9098, 0.6299], [7.0048, 1.4048], [7.2027, 0.6939], [7.4327, 1.1618], [7.1286, 0.7314], [7.3876, 0.8712], [7.4406, 1.4019], [8.7744, 1.1317], [8.8232, 0.9846], [8.3673, 0.917], [8.8034, 1.0723], [9.6452, 1.1418], [9.6245, 0.9794], [6.7107, 1.5642], [6.608, 1.5435], [9.4279, 1.2176], [9.7146, 0.4748], [9.7003, 0.5153], [8.5627, 0.9773], [9.9287, 0.7722], [10.0727, 0.7149], [9.4794, 1.1335], [9.4507, 1.2116], [9.8, 0.9748], [9.3568, 1.2482], [9.122, 1.3251], [9.0012, 1.2587], [9.5251, 0.616], [9.0018, 1.4838], [9.6149, 0.6272], [8.4114, 0.8998], [8.612, 0.4699], [8.6137, 1.1034], [8.887, 1.0838], [7.5317, 1.1326], [7.4635, 1.1355], [8.2701, 1.0428], [8.2793, 0.9562], [7.95, 1.046], [7.332, 1.0482], [8.1653, 1.0449], [7.4724, 1.3234], [7.8481, 1.3027], [6.9376, 1.2547], [6.8478, 0.5723], [6.877, 0.6178], [8.0657, 1.2698], [6.971, 1.515], [7.0136, 1.5023], [6.5259, 1.2971], [6.1841, 1.3978], [6.5828, 1.3291], [6.2134, 1.5331], [6.6222, 1.5414], [6.6629, 1.5975], [6.2353, 1.5137], [6.2442, 1.5535], [6.336, 1.0253], [6.4263, 1.4952], [6.4819, 1.497], [6.4007, 0.9986], [6.4486, 0.9804], [6.4737, 1.6647], [6.4901, 1.6535], [6.4137, 1.3414], [6.9531, 0.581], [6.572, 1.0463], [6.9757, 0.5954], [6.4088, 0.9156], [6.432, 0.8832], [6.451, 1.0932], [6.4304, 1.1743], [6.3444, 0.9812], [6.3755, 0.8927], [9.2211, 1.3601], [9.7394, 0.6575], [9.6408, 0.5538], [8.007, 0.6571], [9.0379, 1.2544], [9.7133, 1.205], [9.2554, 1.2083], [9.887, 0.757], [10.0071, 0.7788], [8.7624, 1.6164], [9.7395, 0.9195], [9.8464, 1.0177], [10.8666, 0.2031], [8.6004, 0.497], [8.7331, 1.0485], [9.1231, 1.5417], [8.4413, 1.2835], [8.1911, 0.9427], [8.4357, 0.8958], [8.1827, 0.8114], [7.4153, 0.7691], [7.7845, 1.1636], [7.7367, 1.4321], [7.4322, 1.3645], [7.4557, 1.5911], [7.686, 0.8454], [7.7356, 0.6772], [6.4759, 1.0721], [7.356, 1.0868], [7.0197, 0.6971], [6.4945, 1.6395], [7.0506, 1.6264], [6.4461, 1.6759], [6.4713, 1.7412], [6.2677, 1.7002], [6.2888, 1.7165], [9.0181, 1.2812], [9.3234, 0.5858], [8.6968, 1.1212], [8.7989, 1.0702], [7.7356, 0.6772]];
 </script>
 <script>
+
 
 
 
@@ -1102,18 +1135,59 @@ function renderAlertKpiChart(recs){
 }
 
 const SERVICE_META = {
-  'VOIX': {color:'#14276B', chartId:'chartVoix', tblId:'tblVoix', avgId:'avgVoix'},
-  'DATA 3G': {color:'#0E7C86', chartId:'chart3G', tblId:'tbl3G', avgId:'avg3G'},
-  'DATA 4G': {color:'#3B4FD1', chartId:'chart4G', tblId:'tbl4G', avgId:'avg4G'}
+  'VOIX': {color:'#14276B', chartId:'chartVoix', tblId:'tblVoix', avgId:'avgVoix', regChartId:'voixRegionChart', cardsId:'voixKpiCards'},
+  'DATA 3G': {color:'#0E7C86', chartId:'chart3G', tblId:'tbl3G', avgId:'avg3G', regChartId:'g3RegionChart', cardsId:'g3KpiCards'},
+  'DATA 4G': {color:'#3B4FD1', chartId:'chart4G', tblId:'tbl4G', avgId:'avg4G', regChartId:'g4RegionChart', cardsId:'g4KpiCards'}
 };
+const KPI_PALETTE = ['#00C2D1','#7B87F5','#1E9E6B','#F5A623','#E1483D','#C0399F'];
+
+function perKpiEvolution(service){
+  const camps = campaignsAvailable();
+  const codes = KPI_ORDER.filter(c=>KPI_REF[c].service===service);
+  const series = {}; codes.forEach(c=> series[c]=[]);
+  camps.forEach(cn=>{
+    const rrs = RECORDS.filter(r=>r.campN===cn && (state.region==='ALL'||r.reg===state.region) && (state.zone==='ALL'||r.zone===state.zone));
+    codes.forEach(c=>{
+      if(rrs.length===0){ series[c].push(null); return; }
+      const sum = rrs.reduce((s,r)=> s + (r.kpi[c] ? r.kpi[c][1] : 0), 0);
+      series[c].push(sum/rrs.length*100);
+    });
+  });
+  return { labels: camps.map(campLabel), series, codes };
+}
+
+function serviceRegionAvg(service, campN){
+  const codes = KPI_ORDER.filter(c=>KPI_REF[c].service===service);
+  return REGION_ORDER.map(reg=>{
+    const rows = campN!==null ? RECORDS.filter(r=>r.campN===campN && r.reg===reg && (state.zone==='ALL'||r.zone===state.zone)) : [];
+    if(rows.length===0) return null;
+    let sum=0,cnt=0;
+    rows.forEach(r=> codes.forEach(c=>{ if(r.kpi[c]){ sum+=r.kpi[c][1]; cnt++; } }));
+    return cnt ? sum/cnt*100 : null;
+  });
+}
 
 function renderServiceCards(recs){
   const kt = kpiTable(recs);
+  const campN = recs.length ? recs[0].campN : null;
   Object.entries(SERVICE_META).forEach(([service, meta])=>{
     const rows = kt.filter(k=>k.service===service);
     const avg = rows.reduce((s,r)=>s+r.confRate,0)/rows.length;
     const avgEl = document.getElementById(meta.avgId);
     if(avgEl) avgEl.textContent = avg.toFixed(0)+'%';
+
+    // Individual KPI cards (value + Alerte/Conforme badge), like the reference dashboard.
+    const cardsEl = document.getElementById(meta.cardsId);
+    if(cardsEl){
+      cardsEl.innerHTML = rows.map(k=>{
+        const b = badge(k.confRate);
+        return `<div class="kpi-mini-card">
+          <div class="kpi-mini-code">${k.code} — ${k.label}</div>
+          <div class="kpi-mini-val" style="color:${badgeColor(k.confRate)}">${k.confRate.toFixed(1)}%</div>
+          <span class="pill ${b.cls}">${b.txt}</span>
+        </div>`;
+      }).join('');
+    }
 
     const tbody = document.getElementById(meta.tblId);
     if(tbody){
@@ -1125,20 +1199,40 @@ function renderServiceCards(recs){
         </tr>`).join('');
     }
 
-    const trend = serviceTrend(service);
+    // Per-KPI evolution (one line per KPI of this service), matching the reference's chart.
+    const evo = perKpiEvolution(service);
     const ctx = document.getElementById(meta.chartId);
     if(ctx){
       if(charts[meta.chartId]) charts[meta.chartId].destroy();
       charts[meta.chartId] = new Chart(ctx, {
         type:'line',
-        data:{ labels: trend.labels, datasets:[{
-          data: trend.values, borderColor: meta.color, backgroundColor: meta.color+'22',
-          borderWidth:2.5, tension:0.35, pointRadius:2.5, pointBackgroundColor: meta.color, fill:true
-        }]},
+        data:{ labels: evo.labels, datasets: evo.codes.map((code,i)=>({
+          label: code, data: evo.series[code], borderColor: KPI_PALETTE[i%KPI_PALETTE.length],
+          backgroundColor:'transparent', borderWidth:2, tension:0.35, pointRadius:2.5,
+          pointBackgroundColor: KPI_PALETTE[i%KPI_PALETTE.length]
+        })) },
         options:{ responsive:true, maintainAspectRatio:false,
-          plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=> (c.parsed.y!==null? c.parsed.y.toFixed(1)+'%':'—')}}},
+          plugins:{legend:{position:'bottom', labels:{font:{size:10}, usePointStyle:true, boxWidth:8}},
+            tooltip:{callbacks:{label:c=> `${c.dataset.label} : ${c.parsed.y!==null? c.parsed.y.toFixed(1)+'%':'—'}`}}},
           scales:{ y:{min:0,max:100, ticks:{callback:v=>v+'%', font:{size:9}}, grid:{color:'#EEF0F5'}},
             x:{ticks:{font:{size:9}}, grid:{display:false}} } }
+      });
+    }
+
+    // Regional breakdown for this service only.
+    const regVals = serviceRegionAvg(service, campN);
+    const ctxReg = document.getElementById(meta.regChartId);
+    if(ctxReg){
+      if(charts[meta.regChartId]) charts[meta.regChartId].destroy();
+      charts[meta.regChartId] = new Chart(ctxReg, {
+        type:'bar',
+        data:{ labels: REGION_ORDER.map(regionLabel), datasets:[{ data: regVals,
+          backgroundColor: regVals.map(v=> v===null?'#E7E9F2': v>=75?'#1E9E6B': v>=50?'#F5A623':'#E1483D'),
+          borderRadius:8, maxBarThickness:50 }] },
+        options:{ responsive:true, maintainAspectRatio:false,
+          plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=> c.parsed.y!==null? c.parsed.y.toFixed(1)+'%':'Pas de données'}}},
+          scales:{ y:{min:0,max:100, ticks:{callback:v=>v+'%', font:{size:9}}, grid:{color:'#EEF0F5'}},
+            x:{ticks:{font:{size:9.5,weight:'600'}}, grid:{display:false}} } }
       });
     }
   });
@@ -1416,6 +1510,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('closeAlertDetail').addEventListener('click', ()=> adModal.classList.remove('show'));
   adModal.addEventListener('click', e=>{ if(e.target===adModal) adModal.classList.remove('show'); });
 });
+
 
 
 
