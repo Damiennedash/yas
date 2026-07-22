@@ -241,6 +241,16 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
 .kpi-mini-card{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
 .kpi-mini-code{ font-size:11.5px; font-weight:700; color:var(--navy2); text-transform:uppercase; letter-spacing:.3px; margin-bottom:6px; }
 .kpi-mini-val{ font-size:24px; font-weight:800; margin-bottom:6px; }
+.mini-tag{ display:inline-block; padding:5px 10px; border-radius:20px; font-size:12px; font-weight:700; margin:3px 4px 3px 0; }
+.mini-tag.ok{ background:#E4F7EE; color:var(--ok); }
+.mini-tag.crit{ background:#FCE7E5; color:var(--crit); }
+
+.heatmap-grid{ display:grid; grid-template-columns: 140px repeat(4, 1fr); gap:6px; }
+.heatmap-cell{ padding:14px 10px; border-radius:8px; text-align:center; font-size:14px; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.25); }
+.heatmap-head{ font-size:11px; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:.4px;
+  display:flex; align-items:center; justify-content:center; padding:6px; }
+.heatmap-rowlabel{ display:flex; align-items:center; font-size:13px; font-weight:700; color:var(--navy2); padding:0 8px; }
+@media(max-width:680px){ .heatmap-grid{ grid-template-columns: 90px repeat(4, 1fr); } .heatmap-cell{ font-size:12px; padding:10px 4px; } }
 .service-card.full .svc-head h4{ font-size:16px; }
 .service-card.full .svc-avg{ font-size:26px; }
 .service-table td.pct{ text-align:right; font-weight:700; width:48px; }
@@ -401,6 +411,28 @@ html, body{ overflow-x:hidden; width:100%; }
       <div class="chart-card">
         <div class="chart-wrap" style="height:260px;"><canvas id="regionChart"></canvas></div>
       </div>
+
+      <div class="section-title">🧭 Synthèse des évolutions — vs campagne précédente</div>
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>📈 KPI en amélioration <span class="count" id="kpiImprovedCount">0</span></h3>
+          <div id="kpiImprovedList"></div>
+        </div>
+        <div class="chart-card">
+          <h3>📉 KPI en dégradation <span class="count" id="kpiDegradedCount">0</span></h3>
+          <div id="kpiDegradedList"></div>
+        </div>
+      </div>
+
+      <div class="section-title">⬇️ Top 5 localités en dégradation</div>
+      <div class="table-card">
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Localité</th><th>Zone</th><th>% actuel</th><th>Évolution</th></tr></thead>
+            <tbody id="top5DegradedBody"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- ===== VIEW: EVOLUTION ===== -->
@@ -510,17 +542,19 @@ html, body{ overflow-x:hidden; width:100%; }
 
     <!-- ===== VIEW: COMPARAISON ===== -->
     <section class="view" id="view-comparaison">
-      <div class="section-title">📊 Grand Lomé vs Hors Lomé — <span id="lastCampLabel3"></span></div>
-      <div class="chart-card">
-        <div class="chart-wrap"><canvas id="zoneCompChart"></canvas></div>
+      <div class="section-title">📊 Comparaison des zones — <span id="lastCampLabel3"></span></div>
+      <div class="charts-row">
+        <div class="chart-card">
+          <h3>Grand Lomé vs Hors Lomé</h3>
+          <div class="chart-wrap"><canvas id="zoneCompChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Comparaison des 16 KPI — actuelle vs précédente</h3>
+          <div class="chart-wrap" style="height:320px;"><canvas id="radarChart"></canvas></div>
+        </div>
       </div>
 
-      <div class="section-title">🕸️ Comparaison des 16 KPI — campagne actuelle vs précédente</div>
-      <div class="chart-card">
-        <div class="chart-wrap" style="height:420px;"><canvas id="radarChart"></canvas></div>
-      </div>
-
-      <div class="section-title">🌡️ Matrice région × service (plus lisible qu'un radar à 6 régions superposées)</div>
+      <div class="section-title">🌡️ Matrice région × service</div>
       <div class="chart-card">
         <div id="heatmapGrid" class="heatmap-grid"></div>
       </div>
@@ -694,6 +728,7 @@ window.__TOGO_REF_POINTS__ = [[6.2112, 1.1552], [6.138, 1.231], [6.1242, 1.2257]
 
 
 
+
 /* Data labels: registered globally but off by default; turned on per-chart where it stays readable
    (bar / doughnut charts). Left off for dense multi-line charts (trend, radar, per-KPI evolution)
    where printed numbers would overlap and hurt readability rather than help it. */
@@ -819,6 +854,29 @@ function localityDelta(loc, campN){
 
 function failingKPIs(rec){
   return KPI_ORDER.filter(code => rec.kpi[code] && rec.kpi[code][1]===0);
+}
+
+function kpiEvolutionSummary(recs, campN){
+  const prev = prevCampN(campN);
+  if(prev===null) return { improved:[], degraded:[] };
+  const prevRecs = filtered(prev);
+  const kt = kpiTable(recs);
+  const ktPrev = kpiTable(prevRecs);
+  const improved = [], degraded = [];
+  kt.forEach((k,i)=>{
+    const d = k.confRate - ktPrev[i].confRate;
+    if(d >= 1) improved.push({code:k.code, delta:d});
+    else if(d <= -1) degraded.push({code:k.code, delta:d});
+  });
+  return { improved, degraded };
+}
+
+function topDegradedLocalities(recs, campN, n=5){
+  const prev = prevCampN(campN);
+  if(prev===null) return [];
+  const withDelta = recs.map(r=>({ rec:r, delta: localityDelta(r.loc, campN) }))
+    .filter(x=> x.delta!==null);
+  return withDelta.sort((a,b)=> a.delta-b.delta).slice(0,n);
 }
 
 function computeAlerts(campN, recs){
@@ -949,6 +1007,7 @@ function render(){
   renderEvolutionExtra();
   renderOperationalExtra(recs);
   renderRegionComparisonTable(campN);
+  renderExecExtra(recs, campN);
 
   document.getElementById('sourceNote').textContent = state.sourceLabel;
   document.getElementById('lastCampLabel').textContent = campLabel(campN);
@@ -1176,6 +1235,36 @@ function renderEvolutionExtra(){
 }
 
 /* ===== Comparaison tab: donut, zone comparison, 16-KPI radar ===== */
+function renderExecExtra(recs, campN){
+  const { improved, degraded } = kpiEvolutionSummary(recs, campN);
+  const impEl = document.getElementById('kpiImprovedList');
+  const degEl = document.getElementById('kpiDegradedList');
+  if(impEl){
+    document.getElementById('kpiImprovedCount').textContent = improved.length;
+    impEl.innerHTML = improved.length
+      ? improved.map(k=>`<span class="mini-tag ok">${k.code} +${k.delta.toFixed(1)}pt</span>`).join(' ')
+      : '<span style="color:var(--gray); font-size:12.5px;">Aucun</span>';
+  }
+  if(degEl){
+    document.getElementById('kpiDegradedCount').textContent = degraded.length;
+    degEl.innerHTML = degraded.length
+      ? degraded.map(k=>`<span class="mini-tag crit">${k.code} ${k.delta.toFixed(1)}pt</span>`).join(' ')
+      : '<span style="color:var(--gray); font-size:12.5px;">Aucune</span>';
+  }
+
+  const top5 = topDegradedLocalities(recs, campN);
+  const tbody = document.getElementById('top5DegradedBody');
+  if(tbody){
+    tbody.innerHTML = top5.length ? top5.map(x=>`
+      <tr>
+        <td>${x.rec.loc}</td>
+        <td>${x.rec.zone==='GL'?'Grand Lomé':'Hors Lomé'}</td>
+        <td class="mono">${x.rec.pct.toFixed(1)}%</td>
+        <td>${fmtDelta(x.delta)}</td>
+      </tr>`).join('') : `<tr><td colspan="4" style="color:var(--gray); text-align:center;">Pas de dégradation notable</td></tr>`;
+  }
+}
+
 function renderComparaisonCharts(recs, campN){
   const stats = globalStats(recs);
   const ctxD = document.getElementById('donutChart');
@@ -1766,6 +1855,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('closeAlertDetail').addEventListener('click', ()=> adModal.classList.remove('show'));
   adModal.addEventListener('click', e=>{ if(e.target===adModal) adModal.classList.remove('show'); });
 });
+
 
 
 
