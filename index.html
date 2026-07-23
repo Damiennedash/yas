@@ -825,6 +825,7 @@ window.__LOC_COORDS__ = {"AFLAO GAKLI": [6.21122, 1.15517], "AMOUTIVE": [6.13795
 
 
 
+
 /* Data labels: registered globally but off by default; turned on per-chart where it stays readable
    (bar / doughnut charts). Left off for dense multi-line charts (trend, radar, per-KPI evolution)
    where printed numbers would overlap and hurt readability rather than help it. */
@@ -2027,13 +2028,17 @@ function rowsToRecords(rows){
     });
     const loc = row['Localité'];
     let lat = parseFloat(row['Lat']), lon = parseFloat(row['Lon']);
-    // If the Sheet's coordinates for this locality are invalid/out of Togo, but we know this exact
-    // locality from the original verified ARCEP survey, silently use the correct coordinates instead
-    // of dropping the point — the Sheet's KPI values are still used as-is, only Lat/Lon are fixed.
-    const badCoord = isNaN(lat) || isNaN(lon) || !isInTogo(lat, lon);
-    if(badCoord && LOC_COORDS[loc]){
+    // The Google Sheet's Lat/Lon can look "valid" (inside Togo, near some known point) while still
+    // being wrong for THIS specific locality — e.g. several rows copy-pasted to Lomé's coordinates.
+    // Geography doesn't change between campaigns, so for any locality we recognise from the original
+    // verified ARCEP survey, we always use its true coordinates and ignore whatever the Sheet has —
+    // only the KPI values are taken from the Sheet. The Sheet's own Lat/Lon is only used as a last
+    // resort for a genuinely new locality we've never seen before.
+    if(LOC_COORDS[loc]){
+      if(isNaN(lat) || isNaN(lon) || Math.abs(lat-LOC_COORDS[loc][0])>0.01 || Math.abs(lon-LOC_COORDS[loc][1])>0.01){
+        corrected++;
+      }
       lat = LOC_COORDS[loc][0]; lon = LOC_COORDS[loc][1];
-      corrected++;
     }
     return {
       camp: row['Campagne'], campN: parseInt(row['N_Campagne'],10),
@@ -2350,6 +2355,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('closeAlertDetail').addEventListener('click', ()=> adModal.classList.remove('show'));
   adModal.addEventListener('click', e=>{ if(e.target===adModal) adModal.classList.remove('show'); });
 });
+
 
 
 
