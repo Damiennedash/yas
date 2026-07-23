@@ -9,6 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <style>
@@ -23,12 +24,37 @@
   --crit:#E1483D;
   --gray:#8A90A6;
   --border:#E7E9F2;
+  --text:#0E1B3D;
 }
+html[data-theme="dark"]{
+  --bg:#0F1420;
+  --card:#171E2E;
+  --border:#2A3348;
+  --gray:#8891A6;
+  --text:#E8EBF2;
+  --navy2:#8FA3E0;
+}
+html[data-theme="dark"] body{ color:var(--text); }
+html[data-theme="dark"] .kcard, html[data-theme="dark"] .chart-card,
+html[data-theme="dark"] .table-card, html[data-theme="dark"] .zone-stat-card,
+html[data-theme="dark"] .kpi-mini-card, html[data-theme="dark"] .alert-card,
+html[data-theme="dark"] .service-card{ background:var(--card); border-color:var(--border); }
+html[data-theme="dark"] .kcard.accent{ background:linear-gradient(160deg, var(--card) 60%, #241C0A 100%); }
+html[data-theme="dark"] thead th{ background:#1B2334; color:var(--gray); }
+html[data-theme="dark"] tbody tr:hover{ background:#1B2334; }
+html[data-theme="dark"] .loc-search, html[data-theme="dark"] .action-select,
+html[data-theme="dark"] .zone-target-input, html[data-theme="dark"] .radar-picker select,
+html[data-theme="dark"] select{ background:var(--card); color:var(--text); border-color:var(--border); }
+html[data-theme="dark"] .map-mode-btn{ background:var(--card); color:var(--text); border-color:var(--border); }
+html[data-theme="dark"] .grp-cell{ background:#1B2334; }
+html[data-theme="dark"] .heatmap-rowlabel{ color:var(--navy2); }
+.theme-toggle-btn{ }
 *{box-sizing:border-box;}
 body{
   margin:0; background:var(--bg); color:var(--navy);
   font-family:'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing:antialiased;
+  transition:background .2s, color .2s;
 }
 h1,h2,h3, .num{ font-family:'Sora', 'Inter', sans-serif; }
 
@@ -253,6 +279,9 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
 .action-select.progress{ background:#E0EEFF; }
 .action-select.done{ background:#E4F7EE; }
 .action-note-btn{ background:none; border:none; cursor:pointer; font-size:13px; margin-left:4px; }
+.verif-tag{ font-size:10px; font-weight:700; margin-top:4px; padding:2px 6px; border-radius:6px; display:inline-block; }
+.verif-tag.ok{ background:#E4F7EE; color:var(--ok); }
+.verif-tag.crit{ background:#FCE7E5; color:var(--crit); }
 .zone-target-row{ display:flex; align-items:center; justify-content:center; gap:4px; margin-top:8px; font-size:11px; color:var(--gray); }
 .zone-target-input{ width:42px; padding:2px 4px; border:1px solid var(--border); border-radius:5px; font-size:11.5px; text-align:center; }
 .zone-target-delta{ font-size:10.5px; margin-left:4px; }
@@ -418,6 +447,8 @@ canvas{ max-width:100%; }
         <button class="icon-btn" id="shareLinkBtn" title="Copier un lien vers cette vue filtrée" onclick="shareFilteredLink()">🔗</button>
         <button class="icon-btn" id="whatsappBtn" title="Résumé WhatsApp" onclick="shareWhatsAppSummary()">📱</button>
         <button class="icon-btn" id="exportPdfBtn" title="Exporter en PDF" onclick="window.print()">🖨️</button>
+        <button class="icon-btn" id="themeToggleBtn" title="Mode sombre / clair" onclick="toggleTheme()">🌙</button>
+        <button class="icon-btn" id="exportExcelBtn" title="Exporter le tableau filtré en Excel" onclick="exportFilteredExcel()">📊</button>
         <button class="icon-btn" id="settingsBtn" title="Connecter Google Sheet">⚙</button>
       </div>
     </div>
@@ -646,6 +677,22 @@ canvas{ max-width:100%; }
           </table>
         </div>
       </div>
+
+      <div class="charts-row">
+        <div class="table-card">
+          <div class="table-card-head"><h3>🏆 Classement des régions — progression</h3></div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>#</th><th>Région</th><th>Actuel</th><th>Évolution</th></tr></thead>
+              <tbody id="regionRankBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>🗺️ Radar de vulnérabilité par région</h3>
+          <div class="chart-wrap" style="height:300px;"><canvas id="vulnRadarChart"></canvas></div>
+        </div>
+      </div>
     </section>
 
     <!-- ===== VIEW: GEO ===== -->
@@ -688,7 +735,7 @@ canvas{ max-width:100%; }
         <div class="table-scroll">
           <table>
             <thead><tr>
-              <th>Localité</th><th>Région</th><th>Zone</th><th>KQI conformes</th><th>% conformité</th><th>Évolution</th><th>Statut</th><th>Action corrective</th>
+              <th>Localité</th><th>Région</th><th>Zone</th><th>KQI conformes</th><th>% conformité</th><th>Évolution</th><th>Statut</th><th>Risque</th><th>Action corrective</th>
             </tr></thead>
             <tbody id="locTableBody"></tbody>
           </table>
@@ -828,6 +875,10 @@ window.__LOC_COORDS__ = {"AFLAO GAKLI": [6.21122, 1.15517], "AMOUTIVE": [6.13795
 
 
 
+
+
+
+
 /* Data labels: registered globally but off by default; turned on per-chart where it stays readable
    (bar / doughnut charts). Left off for dense multi-line charts (trend, radar, per-KPI evolution)
    where printed numbers would overlap and hurt readability rather than help it. */
@@ -872,6 +923,26 @@ function badgeColor(pct){
   if(pct>=75) return '#1E9E6B';
   if(pct>=50) return '#F5A623';
   return '#E1483D';
+}
+
+// Shared popup content for map markers: adds a "share this exact location" link (Google Maps),
+// so a field team can open it directly on their phone and navigate there.
+function mapsShareLink(lat, lon){
+  return `https://www.google.com/maps?q=${lat},${lon}`;
+}
+function whatsappLocShareLink(r){
+  const b = badge(r.pct);
+  const msg = `📍 *${r.loc}* (${r.reg} · ${r.zone==='GL'?'Grand Lomé':'Hors Lomé'})\n`
+    + `Conformité : ${r.pct.toFixed(1)}% — ${b.txt}\n`
+    + `Localisation : ${mapsShareLink(r.lat, r.lon)}`;
+  return 'https://wa.me/?text=' + encodeURIComponent(msg);
+}
+function buildLocPopup(r, extraLine){
+  const color = badgeColor(r.pct);
+  return `<strong>${r.loc}</strong><br>${r.reg} · ${r.zone==='GL'?'Grand Lomé':'Hors Lomé'}<br>
+    ${extraLine || `Conformité : <b style="color:${color}">${r.pct.toFixed(1)}%</b><br>${r.conf}/${r.tot} KQI conformes`}
+    <br><a href="${mapsShareLink(r.lat, r.lon)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:6px;font-size:12px;font-weight:700;color:#0E1B3D;">📍 Ouvrir dans Google Maps</a>
+    <br><a href="${whatsappLocShareLink(r)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:4px;font-size:12px;font-weight:700;color:#1E9E6B;">📲 Partager à un collègue</a>`;
 }
 
 function fmtDelta(d){
@@ -949,6 +1020,21 @@ function localityDelta(loc, campN){
   const curRec = RECORDS.find(r=>r.loc===loc && r.campN===campN);
   if(!prevRec || !curRec) return null;
   return curRec.pct - prevRec.pct;
+}
+
+// Score de risque composite (0-100, plus haut = plus prioritaire à traiter) : combine le niveau
+// actuel de non-conformité, une tendance qui se dégrade, et le nombre de KQI en échec.
+function computeRiskScore(rec, delta){
+  const base = 100 - rec.pct; // 0-100, higher = worse current state
+  const trendPenalty = (delta!==null && delta<0) ? Math.min(25, -delta) : 0;
+  const failRatio = rec.tot ? (rec.tot - rec.conf) / rec.tot * 100 : 0;
+  const score = base*0.55 + trendPenalty*1.0 + failRatio*0.25;
+  return Math.max(0, Math.min(100, score));
+}
+function riskBadge(score){
+  if(score>=65) return {cls:'crit', txt:'Priorité haute'};
+  if(score>=35) return {cls:'warn', txt:'Priorité moyenne'};
+  return {cls:'ok', txt:'Priorité basse'};
 }
 
 function failingKPIs(rec){
@@ -1112,20 +1198,33 @@ function render(){
     const b = badge(r.pct);
     const d = localityDelta(r.loc, campN);
     const action = getActionStatus(r.loc);
+    const risk = computeRiskScore(r, d);
+    const rb = riskBadge(risk);
+    const verif = getActionVerification(r.loc, r);
+    const verifHtml = verif
+      ? (verif.improved
+          ? `<div class="verif-tag ok">✅ Confirmé (${verif.before.toFixed(0)}%→${verif.after.toFixed(0)}%)</div>`
+          : `<div class="verif-tag crit">⚠️ À revérifier (${verif.before.toFixed(0)}%→${verif.after.toFixed(0)}%)</div>`)
+      : '';
     return `<tr>
-      <td>${r.loc}</td>
+      <td>${r.loc}
+        <a href="${mapsShareLink(r.lat, r.lon)}" target="_blank" rel="noopener" title="Ouvrir dans Google Maps" style="text-decoration:none;">📍</a>
+        <a href="${whatsappLocShareLink(r)}" target="_blank" rel="noopener" title="Partager à un collègue" style="text-decoration:none;">📲</a>
+      </td>
       <td>${r.reg}</td>
       <td>${r.zone==='GL'?'Grand Lomé':'Hors Lomé'}</td>
       <td class="mono">${r.conf}/${r.tot}</td>
       <td class="mono">${r.pct.toFixed(1)}%</td>
       <td>${fmtDelta(d)}</td>
       <td><span class="pill ${b.cls}">${b.txt}</span></td>
+      <td><span class="pill ${rb.cls}" title="Score: ${risk.toFixed(0)}/100">${risk.toFixed(0)}</span></td>
       <td>
         <select class="action-select ${action}" data-loc="${r.loc.replace(/"/g,'&quot;')}" onchange="setActionStatus(this.dataset.loc, this.value); this.className='action-select '+this.value;">
           <option value="todo" ${action==='todo'?'selected':''}>À traiter</option>
           <option value="progress" ${action==='progress'?'selected':''}>En cours</option>
           <option value="done" ${action==='done'?'selected':''}>Résolu</option>
         </select>
+        ${verifHtml}
       </td>
     </tr>`;
   }).join('');
@@ -1142,6 +1241,8 @@ function render(){
   renderEvolutionExtra();
   renderOperationalExtra(recs);
   renderRegionComparisonTable(campN);
+  renderRegionRanking(campN);
+  renderVulnRadar(campN);
   renderExecExtra(recs, campN);
 
   document.getElementById('sourceNote').textContent = state.sourceLabel;
@@ -1628,6 +1729,59 @@ function renderRegionComparisonTable(campN){
     }).join('');
   }
 }
+
+/* ===== Classement des régions (gamification) ===== */
+function renderRegionRanking(campN){
+  const tbody = document.getElementById('regionRankBody');
+  if(!tbody) return;
+  const prev = prevCampN(campN);
+  const avgFor = (cn, reg) => {
+    if(cn===null) return null;
+    const rows = RECORDS.filter(r=>r.campN===cn && r.reg===reg && (state.zone==='ALL'||r.zone===state.zone));
+    return rows.length ? rows.reduce((s,r)=>s+r.pct,0)/rows.length : null;
+  };
+  const ranking = REGION_ORDER.map(reg=>{
+    const cur = avgFor(campN, reg);
+    const before = avgFor(prev, reg);
+    const delta = (cur!==null && before!==null) ? cur-before : null;
+    return { reg, cur, delta };
+  }).filter(r=> r.delta!==null).sort((a,b)=> b.delta-a.delta);
+  const medals = ['🥇','🥈','🥉'];
+  tbody.innerHTML = ranking.length ? ranking.map((r,i)=>`
+    <tr>
+      <td>${medals[i]||i+1}</td>
+      <td><strong>${regionLabel(r.reg)}</strong></td>
+      <td class="mono">${r.cur.toFixed(1)}%</td>
+      <td>${fmtDelta(r.delta)}</td>
+    </tr>`).join('') : `<tr><td colspan="4" style="text-align:center; color:var(--gray);">Pas de campagne précédente à comparer</td></tr>`;
+}
+
+/* ===== Radar de vulnérabilité par région ===== */
+function renderVulnRadar(campN){
+  const ctx = document.getElementById('vulnRadarChart');
+  if(!ctx) return;
+  const alerts = computeAlerts(campN, filtered(campN));
+  const scores = REGION_ORDER.map(reg=>{
+    const rows = RECORDS.filter(r=>r.campN===campN && r.reg===reg && (state.zone==='ALL'||r.zone===state.zone));
+    if(rows.length===0) return 0;
+    const avgPct = rows.reduce((s,r)=>s+r.pct,0)/rows.length;
+    const critFraction = rows.filter(r=>r.pct<50).length / rows.length;
+    const alertCount = alerts.filter(a=>a.rec.reg===reg).length;
+    const score = (100-avgPct)*0.5 + critFraction*100*0.3 + Math.min(20, alertCount*2)*1.0;
+    return Math.max(0, Math.min(100, score));
+  });
+  if(charts.vulnRadar) charts.vulnRadar.destroy();
+  charts.vulnRadar = new Chart(ctx, {
+    type:'radar',
+    data:{ labels: REGION_ORDER.map(regionLabel), datasets:[{
+      label:'Score de vulnérabilité', data: scores,
+      borderColor:'#E1483D', backgroundColor:'rgba(225,72,61,.22)', borderWidth:2, pointBackgroundColor:'#E1483D'
+    }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=> `Vulnérabilité : ${c.parsed.r.toFixed(0)}/100`}}},
+      scales:{ r:{min:0,max:100, ticks:{stepSize:25, backdropColor:'transparent', font:{size:9}}, pointLabels:{font:{size:10,weight:'600'}}, grid:{color:'#EEF0F5'}} } }
+  });
+}
 /* ===== Vue géographique: distribution & density-by-region charts ===== */
 function renderGeoCharts(recs){
   const campN = recs.length ? recs[0].campN : null;
@@ -1938,7 +2092,7 @@ function drawMapMarkers(valid){
     ordered.forEach(r=>{
       const color = badgeColor(r.pct);
       const intensity = Math.max(0.12, (100-r.pct)/100); // more critical → more opaque/"hotter"
-      const popupHtml = `<strong>${r.loc}</strong><br>${r.reg} · ${r.zone==='GL'?'Grand Lomé':'Hors Lomé'}<br>Conformité : <b style="color:${color}">${r.pct.toFixed(1)}%</b><br>${r.conf}/${r.tot} KQI conformes`;
+      const popupHtml = buildLocPopup(r);
       L.circle([r.lat, r.lon], {
         radius: 11000, // metres — wide enough that nearby localities visually blend together
         color: 'transparent', weight:0,
@@ -1956,7 +2110,7 @@ function drawMapMarkers(valid){
   const ordered = [...valid].sort((a,b)=> (a.pct<50?1:0) - (b.pct<50?1:0));
   ordered.forEach(r=>{
     const color = badgeColor(r.pct);
-    const popupHtml = `<strong>${r.loc}</strong><br>${r.reg} · ${r.zone==='GL'?'Grand Lomé':'Hors Lomé'}<br>Conformité : <b style="color:${color}">${r.pct.toFixed(1)}%</b><br>${r.conf}/${r.tot} KQI conformes`;
+    const popupHtml = buildLocPopup(r);
     let m;
     if(r.pct < 50){
       m = L.marker([r.lat, r.lon], {
@@ -2000,7 +2154,7 @@ function renderAlertMap(alerts){
       icon: L.divIcon({ className:'', html:'<div class="pulse-dot"></div>', iconSize:[14,14], iconAnchor:[7,7] }),
       zIndexOffset: 1000
     });
-    m.bindPopup(`<strong>${r.loc}</strong><br>${r.reg} · ${r.zone==='GL'?'Grand Lomé':'Hors Lomé'}<br><span style="color:${color}">${a.msg}</span>`);
+    m.bindPopup(buildLocPopup(r, `<span style="color:${color}">${a.msg}</span>`));
     m.addTo(alertMarkerLayer);
   });
 }
@@ -2080,6 +2234,50 @@ function safeStorage(){
 }
 const LS = safeStorage();
 
+/* ===== Mode sombre ===== */
+const THEME_KEY = 'yasQoeTheme';
+window.toggleTheme = function(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur==='dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  const btn = document.getElementById('themeToggleBtn');
+  if(btn) btn.textContent = next==='dark' ? '☀️' : '🌙';
+  if(LS) LS.setItem(THEME_KEY, next);
+};
+function applySavedTheme(){
+  const saved = LS ? LS.getItem(THEME_KEY) : null;
+  if(saved==='dark'){
+    document.documentElement.setAttribute('data-theme', 'dark');
+    const btn = document.getElementById('themeToggleBtn');
+    if(btn) btn.textContent = '☀️';
+  }
+}
+
+/* ===== Export Excel du tableau filtré ===== */
+window.exportFilteredExcel = function(){
+  if(typeof XLSX === 'undefined'){ alert("La bibliothèque d'export Excel n'a pas pu se charger."); return; }
+  if(RECORDS.length===0){ alert("Aucune donnée chargée à exporter."); return; }
+  const camps = campaignsAvailable();
+  const campN = state.campN!==null ? state.campN : camps[camps.length-1];
+  const recs = filtered(campN)
+    .filter(r=> !locSearchTerm || r.loc.toLowerCase().includes(locSearchTerm))
+    .sort((a,b)=>a.pct-b.pct);
+  const rows = recs.map(r=>{
+    const delta = localityDelta(r.loc, campN);
+    return {
+      'Localité': r.loc, 'Région': r.reg, 'Zone': r.zone==='GL'?'Grand Lomé':'Hors Lomé',
+      'Campagne': campLabel(campN), 'KQI conformes': r.conf, 'KQI total': r.tot,
+      '% Conformité': r.pct, 'Évolution (pts)': delta===null?'':Math.round(delta*10)/10,
+      'Statut': badge(r.pct).txt, 'Action corrective': getActionStatus(r.loc)
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Localités');
+  const fname = `Yas_QoE_${campLabel(campN).replace(/\s+/g,'_')}.xlsx`;
+  XLSX.writeFile(wb, fname);
+};
+
 /* ===== Recherche de localité ===== */
 let locSearchTerm = '';
 
@@ -2091,14 +2289,33 @@ function loadActions(){
 }
 function getActionStatus(loc){
   const store = loadActions();
-  return store[loc] || 'todo';
+  const v = store[loc];
+  if(!v) return 'todo';
+  return typeof v === 'string' ? v : v.status;
 }
 window.setActionStatus = function(loc, status){
   if(!LS) return;
   const store = loadActions();
-  store[loc] = status;
+  const camps = campaignsAvailable();
+  const campN = state.campN!==null ? state.campN : camps[camps.length-1];
+  const rec = RECORDS.find(r=>r.loc===loc && r.campN===campN);
+  const entry = { status };
+  if(status==='done' && rec){ entry.markedPct = rec.pct; entry.markedCampN = campN; }
+  store[loc] = entry;
   LS.setItem(ACTIONS_KEY, JSON.stringify(store));
+  render();
 };
+
+// Vérification automatique : une localité marquée "Résolu" s'est-elle vraiment améliorée
+// à une campagne ultérieure ? Renvoie null tant qu'on n'a pas de campagne plus récente à comparer.
+function getActionVerification(loc, currentRec){
+  const store = loadActions();
+  const v = store[loc];
+  if(!v || typeof v==='string' || v.status!=='done' || v.markedPct===undefined || !currentRec) return null;
+  if(currentRec.campN <= v.markedCampN) return null;
+  const improved = currentRec.pct >= v.markedPct + 5 || currentRec.pct >= 50;
+  return { improved, before: v.markedPct, after: currentRec.pct };
+}
 
 /* ===== Objectifs internes personnalisés (par zone) ===== */
 const TARGETS_KEY = 'yasQoeTargets';
@@ -2228,19 +2445,92 @@ window.shareWhatsAppSummary = function(){
   const campN = state.campN!==null ? state.campN : camps[camps.length-1];
   const recs = filtered(campN);
   const stats = globalStats(recs);
-  const alerts = computeAlerts(campN, recs);
-  const critical = alerts.filter(a=>a.sev==='crit').slice(0,5);
+  const view = state.view || 'overview';
+
   let msg = `*📡 Yas Togo — QoE ARCEP*\n`;
-  msg += `Campagne : ${campLabel(campN)}\n`;
-  msg += `Taux de conformité global : *${stats.avg.toFixed(1)}%*\n`;
-  msg += `✅ Conformes : ${stats.ok}  ⚠️ Vigilance : ${stats.warn}  🔴 Critiques : ${stats.crit}\n`;
-  if(critical.length){
-    msg += `\n*Alertes critiques :*\n`;
-    critical.forEach(a=> msg += `• ${a.rec.loc} (${a.rec.reg}) — ${a.rec.pct.toFixed(0)}%\n`);
-    if(alerts.filter(a=>a.sev==='crit').length > 5) msg += `… + ${alerts.filter(a=>a.sev==='crit').length-5} autre(s)\n`;
+  msg += `Campagne : ${campLabel(campN)}\n\n`;
+
+  if(view==='kpi-voix' || view==='kpi-3g' || view==='kpi-4g'){
+    const svcMap = {'kpi-voix':'VOIX', 'kpi-3g':'DATA 3G', 'kpi-4g':'DATA 4G'};
+    const svcLabel = {'kpi-voix':'Voix', 'kpi-3g':'Data 3G', 'kpi-4g':'Data 4G'};
+    const service = svcMap[view];
+    const kt = kpiTable(recs).filter(k=>k.service===service);
+    const avg = kt.reduce((s,k)=>s+k.confRate,0)/kt.length;
+    msg += `*KPI ${svcLabel[view]}* — moyenne : *${avg.toFixed(1)}%*\n\n`;
+    kt.forEach(k=>{
+      const b = badge(k.confRate);
+      const icon = b.cls==='ok'?'✅':b.cls==='warn'?'⚠️':'🔴';
+      msg += `${icon} ${k.code} — ${k.label} : ${k.confRate.toFixed(0)}%\n`;
+    });
+
+  } else if(view==='operational'){
+    const kt = kpiTable(recs);
+    msg += `*Détail des 16 KPI ARCEP*\n\n`;
+    kt.forEach(k=>{
+      const b = badge(k.confRate);
+      const icon = b.cls==='ok'?'✅':b.cls==='warn'?'⚠️':'🔴';
+      msg += `${icon} ${k.code} (${k.service}) : ${k.confRate.toFixed(0)}%\n`;
+    });
+
+  } else if(view==='evolution'){
+    const { improved, degraded } = kpiEvolutionSummary(recs, campN);
+    msg += `*Évolution vs campagne précédente*\n`;
+    msg += `📈 KPI en amélioration : ${improved.length}\n`;
+    improved.forEach(k=> msg += `  • ${k.code} +${k.delta.toFixed(1)}pt\n`);
+    msg += `📉 KPI en dégradation : ${degraded.length}\n`;
+    degraded.forEach(k=> msg += `  • ${k.code} ${k.delta.toFixed(1)}pt\n`);
+
+  } else if(view==='comparaison'){
+    const glRecs = recs.filter(r=>r.zone==='GL');
+    const hlRecs = recs.filter(r=>r.zone==='HL');
+    const avg = a => a.length ? a.reduce((s,r)=>s+r.pct,0)/a.length : null;
+    msg += `*Comparaison des zones*\n`;
+    msg += `Grand Lomé : ${avg(glRecs)!==null? avg(glRecs).toFixed(1)+'%':'—'}\n`;
+    msg += `Hors Lomé : ${avg(hlRecs)!==null? avg(hlRecs).toFixed(1)+'%':'—'}\n\n`;
+    msg += `*Par région :*\n`;
+    REGION_ORDER.forEach(reg=>{
+      const rows = recs.filter(r=>r.reg===reg);
+      const a = avg(rows);
+      msg += `${a!==null? a.toFixed(0)+'%':'—'} — ${regionLabel(reg)}\n`;
+    });
+
+  } else if(view==='geo' || view==='localites'){
+    const sorted = [...recs].sort((a,b)=>a.pct-b.pct).slice(0,8);
+    msg += `*Localités les plus critiques*\n\n`;
+    sorted.forEach(r=>{
+      const b = badge(r.pct);
+      const icon = b.cls==='ok'?'✅':b.cls==='warn'?'⚠️':'🔴';
+      msg += `${icon} ${r.loc} (${r.reg}) — ${r.pct.toFixed(0)}%\n`;
+    });
+
+  } else if(view==='alerts'){
+    const alerts = computeAlerts(campN, recs);
+    const critical = alerts.filter(a=>a.sev==='crit');
+    const predictive = computePredictiveAlerts(campN);
+    msg += `🔴 Alertes critiques : ${critical.length}\n`;
+    msg += `🔮 Alertes prédictives : ${predictive.length}\n\n`;
+    critical.slice(0,8).forEach(a=> msg += `• ${a.rec.loc} (${a.rec.reg}) — ${a.rec.pct.toFixed(0)}%\n`);
+    if(critical.length>8) msg += `… + ${critical.length-8} autre(s)\n`;
+    if(predictive.length){
+      msg += `\n*Tendances préoccupantes :*\n`;
+      predictive.slice(0,5).forEach(p=> msg += `• ${p.code} : ${p.current.toFixed(1)}% → ${p.projected.toFixed(1)}% projeté\n`);
+    }
+
   } else {
-    msg += `\nAucune localité critique sur cette sélection.\n`;
+    // overview / default: global executive summary
+    const alerts = computeAlerts(campN, recs);
+    const critical = alerts.filter(a=>a.sev==='crit').slice(0,5);
+    msg += `Taux de conformité global : *${stats.avg.toFixed(1)}%*\n`;
+    msg += `✅ Conformes : ${stats.ok}  ⚠️ Vigilance : ${stats.warn}  🔴 Critiques : ${stats.crit}\n`;
+    if(critical.length){
+      msg += `\n*Alertes critiques :*\n`;
+      critical.forEach(a=> msg += `• ${a.rec.loc} (${a.rec.reg}) — ${a.rec.pct.toFixed(0)}%\n`);
+      if(alerts.filter(a=>a.sev==='crit').length > 5) msg += `… + ${alerts.filter(a=>a.sev==='crit').length-5} autre(s)\n`;
+    } else {
+      msg += `\nAucune localité critique sur cette sélection.\n`;
+    }
   }
+
   const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
   window.open(url, '_blank');
 };
@@ -2311,6 +2601,7 @@ function activateView(viewKey){
 }
 
 document.addEventListener('DOMContentLoaded', ()=>{
+  applySavedTheme();
   render();
 
   // Auto-reconnect: prefer a per-browser saved connection, otherwise use the site-wide default Sheet.
@@ -2369,6 +2660,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('closeAlertDetail').addEventListener('click', ()=> adModal.classList.remove('show'));
   adModal.addEventListener('click', e=>{ if(e.target===adModal) adModal.classList.remove('show'); });
 });
+
+
+
+
 
 
 
