@@ -282,6 +282,17 @@ footer{ text-align:center; padding:20px; color:var(--gray); font-size:12px; }
 .verif-tag{ font-size:10px; font-weight:700; margin-top:4px; padding:2px 6px; border-radius:6px; display:inline-block; }
 .verif-tag.ok{ background:#E4F7EE; color:var(--ok); }
 .verif-tag.crit{ background:#FCE7E5; color:var(--crit); }
+
+.kpi-filter-row{ display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.kpi-filter-label{ font-size:12.5px; font-weight:700; color:var(--gray); margin-right:2px; }
+.kpi-filter-all{ font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:14px; border:1px solid var(--border);
+  background:#fff; color:var(--navy2); cursor:pointer; }
+.kpi-filter-all:hover{ background:var(--bg); }
+.kpi-filter-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.kpi-chip{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; padding:4px 10px 4px 6px;
+  border-radius:14px; border:1px solid var(--border); background:#fff; color:var(--navy); cursor:pointer; user-select:none; }
+.kpi-chip .dot{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+.kpi-chip.off{ opacity:.35; }
 .zone-target-row{ display:flex; align-items:center; justify-content:center; gap:4px; margin-top:8px; font-size:11px; color:var(--gray); }
 .zone-target-input{ width:42px; padding:2px 4px; border:1px solid var(--border); border-radius:5px; font-size:11.5px; text-align:center; }
 .zone-target-delta{ font-size:10.5px; margin-left:4px; }
@@ -554,6 +565,12 @@ canvas{ max-width:100%; }
 
       <div class="section-title">🧬 Tendance de chaque KPI — toutes campagnes</div>
       <div class="chart-card">
+        <div class="kpi-filter-row">
+          <span class="kpi-filter-label">Filtrer :</span>
+          <button class="kpi-filter-all" onclick="toggleAllKpiFilter(true)">Tout</button>
+          <button class="kpi-filter-all" onclick="toggleAllKpiFilter(false)">Aucun</button>
+          <div id="kpiFilterChips" class="kpi-filter-chips"></div>
+        </div>
         <div class="chart-wrap" style="height:340px;"><canvas id="kpiAllEvoChart"></canvas></div>
       </div>
     </section>
@@ -853,6 +870,7 @@ window.__TOGO_REF_POINTS__ = [[6.2112, 1.1552], [6.138, 1.231], [6.1242, 1.2257]
 window.__LOC_COORDS__ = {"AFLAO GAKLI": [6.21122, 1.15517], "AMOUTIVE": [6.13795, 1.23104], "ARRONDISSEMENT-1": [6.12415, 1.22568], "ARRONDISSEMENT-2": [6.17714, 1.29391], "ARRONDISSEMENT-3": [6.17066, 1.34042], "ARRONDISSEMENT-4": [6.13881, 1.22054], "ARRONDISSEMENT-5": [6.15668, 1.20571], "BAGUIDA": [6.16392, 1.32658], "LEGBASSITO": [6.26937, 1.14961], "TOGBLEKOPE": [6.28287, 1.19365], "ADETIKOPE": [6.32285, 1.21722], "AFAGNANGAN": [6.4929, 1.63863], "AGBATA": [6.19466, 1.39176], "AGBODRAFO": [6.21058, 1.4815], "AGOME-GLOZOU": [6.55258, 1.66678], "AHEPE ": [6.60867, 1.39907], "ANEHO": [6.22728, 1.58142], "DALAVE": [6.85442, 0.75217], "DAVIE": [6.38548, 1.2029], "DJAGBLE": [6.75285, 1.21923], "EKPUI": [6.24928, 1.44742], "GBODJOME": [6.19417, 1.41643], "GBOTO-ZEVE": [6.70033, 1.47825], "KINI-KONDJI": [6.60479, 1.54053], "KPEME": [6.43917, 1.17897], "KPETSOU": [6.51463, 1.57605], "KPOGAN-AGBETIKO": [6.1931, 1.38051], "KPOTEME": [6.53362, 1.5847], "SEVAGAN": [6.29847, 1.42822], "SEWATSRIKOPE-KPEME": [6.20898, 1.5039], "TABLIGBO": [6.58795, 1.49992], "TOGOVILLE": [6.23197, 1.4812], "VOGAN": [6.3335, 1.53205], "AGBATITOE": [7.07463, 1.15262], "AGOME-TOMEGBE": [6.95308, 0.5574], "AGOME YOH": [6.9438, 0.59705], "AGOU-GADZEPE": [6.84596, 0.71468], "AGOU NYOGBO": [6.87692, 0.72645], "AMLAME": [7.46328, 0.90402], "ATAKPAME-WOUDOU": [7.50676, 1.15321], "ATCHAVE": [6.86073, 1.21567], "KAMINA": [8.09422, 1.56082], "KOUMAWOU": [6.84753, 0.72547], "KPEKPLEME": [7.33153, 1.62432], "LATHO": [7.11697, 1.1279], "NOTSE": [6.95865, 1.17247], "PETSI": [6.86303, 0.76813], "SALIGBE": [7.22516, 1.62506], "TADO": [7.14598, 1.59158], "TAKOUKOPE/KPONOU": [7.0176, 1.17678], "TEMEDJA": [7.52065, 1.06973], "TOMEGBE AKEBOU": [7.87141, 0.81469], "TSAVE": [6.93753, 1.31037], "TSIMANE": [6.64087, 1.26407], "BOULOHOU": [8.77248, 0.67067], "DJARKPANGA": [8.77878, 0.56287], "KOLOWARE": [8.9569, 1.2896], "KPARATAOU": [8.95183, 1.1988], "AGBANDE-YAKA": [9.7519, 1.10509], "ASSERE-BAS ": [9.79907, 1.29801], "BANDJELI": [9.42521, 0.62274], "BASSAR": [9.25718, 0.7843], "BOUTCHATCHAL": [9.72227, 0.57408], "GNEZIMDE": [8.71683, 0.5872], "GUERIN-KOUKA": [9.68832, 0.60978], "KABOU": [9.45668, 0.8121], "KAGNISSI": [9.77117, 1.32132], "KALANGA": [9.2649, 0.70175], "KARA": [9.54614, 1.17605], "KEMERIDA": [9.66308, 1.35198], "KETAO": [9.65877, 1.30845], "KIDJABOUN": [9.78147, 0.46568], "KOUFITOUGOU": [10.0718, 1.13078], "KPANGAM": [8.81853, 0.59998], "KPANKPANDE": [9.878, 0.3955], "NADOBA": [10.1474, 1.0713], "PAGOUDA": [9.75258, 1.32808], "SANDA-AFOHOU": [9.48277, 0.9415], "SARA": [9.44473, 0.82892], "YAKA": [9.75835, 1.10185], "ZONGO": [9.76197, 1.11055], "BOMBENGOU": [10.7463, 0.52203], "BOPAK": [10.68622, 0.12913], "BORGOU-CENTRE": [10.75918, 0.57298], "BOUMBOUMIGOU": [10.50637, 0.18599], "CINKASSE": [11.11223, 0.01165], "GANDO": [10.31953, 0.73296], "KORBONGOU-CENTRE": [10.91592, 0.30888], "KPIERIK": [10.67897, 0.14887], "MANGO": [10.37393, 0.47366], "NAGBENI-CENTRE": [10.61255, 0.3956], "NAKPABAK": [10.75618, 0.09313], "NAMONI": [10.33167, 0.74237], "NASSIAGOU": [10.7083, 0.13263], "NAYERGOU BAS": [10.50123, 0.16207], "TANDJOARE": [10.65901, 0.2104], "ATAKPAME WOGOU": [7.50676, 1.15321], "KPONOU": [7.0176, 1.17678], "KUMAWU": [6.84753, 0.72547], "YORGOU": [11.04174, 0.12092], "AFLAO SAGBADO": [6.18765, 1.12252], "AGOENYIVE": [6.23405, 1.18011], "ZANGUERA": [6.23047, 1.10133], "ALOKOEGBE": [6.4457, 1.0837], "ATIVIME": [6.42943, 1.1079], "TODOME": [6.47823, 1.61675], "KEVE": [6.43068, 0.93152], "KOVIE": [6.34062, 1.11052], "WLI": [6.41183, 1.16293], "KPADAPE": [6.84282, 0.59453], "TOVEGAN": [6.5686, 0.89758], "AGBELOUVE": [6.67932, 1.16572], "GAPE-CENTRE": [6.60212, 1.10347], "AKOUMAPE-APEGAN": [6.38498, 1.43925], "YOMETCHIN": [6.48255, 1.0102], "GATI": [6.4929, 1.32938], "TSEVIE": [6.43295, 1.20733], "KOUVE-GBOLI": [6.65747, 1.40213], "HAVE": [6.49337, 1.2521], "ZAFI": [7.57105, 1.03833], "BADOU": [7.58712, 0.60862], "KOLO KOPE": [7.79573, 1.28858], "KOUGNONHOU ": [7.65843, 0.79392], "KABAGNI": [7.88453, 0.77423], "ANIE": [7.76063, 1.19313], "LAMA-WERE": [8.47322, 1.06145], "YOMABOUA": [8.38972, 0.9916], "DOUFOULI": [8.30803, 0.92857], "BLITTA": [8.3236, 0.98222], "PAGALA-GARE": [8.18472, 0.96957], "YALOUMBE": [8.30018, 1.07825], "ATAKPAME (GNAGNA) ": [7.53167, 1.13263], "ELAVAGNON": [7.52685, 1.09412], "SOKODE": [8.97798, 1.1449], "KOULOUMI": [8.95407, 1.51607], "TCHAMBA": [9.02952, 1.4169], "KOUPATIEGOU": [10.09238, 1.11217], "NIAMTOUGOU": [9.74375, 1.11612], "KANTE CENTRE": [9.95848, 1.04182], "ANYRON": [6.51593, 0.98432], "LILIKOPE": [6.55592, 1.1844], "APEGNIGBE": [6.31068, 1.42658], "HAHOTOE": [6.361, 1.40848], "TOHOUN": [7.02345, 1.61462], "KPALIME": [6.90977, 0.62987], "ASRAMA": [7.00478, 1.4048], "DANYI-APEYEME": [7.20275, 0.69391], "DATCHA": [7.43267, 1.16177], "ADETA": [7.1286, 0.73137], "AMOU-OBLO": [7.38765, 0.87118], "NAGBETO": [7.44061, 1.40192], "SOLAO": [8.77443, 1.13173], "TCHAWARE": [8.82322, 0.98463], "TINDJASSE": [8.36733, 0.91703], "YARA KABYE": [8.80343, 1.07235], "PYA": [9.6452, 1.1418], "SARAKAWA": [9.62446, 0.97937], "ESSE GONDJI": [6.71071, 1.56419], "KINI KONDJI": [6.608, 1.54353], "BOULADE": [9.42788, 1.21764], "NABOUANE": [9.71456, 0.47483], "BOUMAN": [9.70029, 0.51533], "SOTOUBOUA": [8.56268, 0.97729], "HELOTA": [9.92869, 0.77218], "OSSACRE": [10.07273, 0.71488], "ATCHANGBADE": [9.47938, 1.13347], "AWANDJELO": [9.45071, 1.2116], "KADJALLA": [9.79999, 0.97478], "BAFILO": [9.35681, 1.24819], "AGOULOUDE": [9.12204, 1.32505], "WASSARABO": [9.00116, 1.25872], "BAPURE-CENTRE": [9.52509, 0.61598], "DANTCHO": [9.00178, 1.48382], "NAWARE": [9.61486, 0.62718], "MEWEDE": [8.41136, 0.89978], "SAIBOUDE": [8.61197, 0.46991], "TITIGBE": [8.61374, 1.10337], "KASSENA": [8.88703, 1.08383], "ATAKPAME": [7.53167, 1.13263], "AVEDJE": [7.46346, 1.13552], "MALIKA": [8.27013, 1.04275], "TONDJA": [8.27926, 0.95615], "AKABA PLATEAU": [7.94996, 1.04603], "KPATEGAN": [7.33201, 1.0482], "YELOUM LEKOHAN": [8.16534, 1.04492], "AKPARE": [7.47241, 1.32342], "GBADJAHE": [7.84814, 1.30265], "DJEMEGNI": [6.93764, 1.25467], "WOME": [6.84783, 0.57227], "GBALAVE": [6.87696, 0.61777], "KPESSI": [8.06574, 1.2698], "OKPAHOE": [6.97098, 1.51502], "TETTETOU": [7.01361, 1.50228], "ADANGBE": [6.52593, 1.29705], "AGBAVI": [6.18408, 1.39777], "ESSE-ZOGBEDJI": [6.58281, 1.32913], "GOUMOUKOPE": [6.21343, 1.53308], "AVEGAME": [6.62221, 1.54138], "TOKPLI": [6.66289, 1.59752], "BADOUGBE": [6.23528, 1.51373], "KETA AKODA": [6.24416, 1.55355], "BAGBE-GARE": [6.33601, 1.02528], "ATIVE KOSSIDAME": [6.42631, 1.4952], "DAGBATI": [6.48186, 1.49705], "AGOUDJA": [6.40074, 0.99863], "DJOGBEPIME": [6.44861, 0.98038], "LOGOWOME": [6.47374, 1.66468], "MATCHALLE": [6.49006, 1.6535], "YOBO-SEDJRO": [6.41368, 1.34137], "KUMA-KONDA": [6.95313, 0.58097], "NYASSIVE": [6.57196, 1.04635], "KUMA ADMA": [6.97574, 0.59542], "TSIVIEPE": [6.40881, 0.91558], "ANDO": [6.43201, 0.88321], "BOLOU KPETA": [6.45096, 1.09315], "BOLOUGAN": [6.43043, 1.1743], "DOKPLALA": [6.34435, 0.98124], "DZOLO": [6.37553, 0.89268], "KPANAHORE": [9.22115, 1.36008], "KINAKPATEOU": [9.7394, 0.65747], "NAGBIDJABO": [9.64082, 0.55378], "ASSOUKOKO": [8.00698, 0.65705], "BOWOUDA": [9.03787, 1.25442], "KOUMEA": [9.71325, 1.205], "ALEDJO-KADARA": [9.25538, 1.2083], "NANDJOUDJA": [9.88699, 0.75698], "PANGOUDA": [10.00713, 0.77877], "SOLIMBIA": [8.76243, 1.61643], "BROUKOU": [9.73948, 0.91953], "TCHORE": [9.8464, 1.0177], "DAPAONG": [10.86662, 0.20306], "GBANZABADE": [8.60037, 0.49697], "AOUDA": [8.7331, 1.04847], "AFEM-BOUSSOU": [9.12308, 1.54167], "AFFO SALA KOPE": [8.44125, 1.28347], " GASSI GASSI": [8.19108, 0.94271], "HEZOUDE": [8.43572, 0.89575], "TCHIFAMA": [8.18274, 0.81139], "ADOMI-ABRA": [7.4153, 0.76908], "KONIGBO": [7.7845, 1.16362], "OKE ADOGBENOU": [7.7367, 1.43212], "ASSANTE": [7.43225, 1.3645], "HOMAGAN": [7.45567, 1.59113], "ATIGOZA": [7.68602, 0.84542], "BROUNFOU": [7.73565, 0.67717], "BOLOU KLOKPOE": [6.47588, 1.07214], "OGBATANAWLOU": [7.35605, 1.08677], "LAVIE AGOVIEPE": [7.01965, 0.69712], "AFAGNANGAN-GBLETA": [6.49449, 1.63945], "WAGBA": [7.05057, 1.62638], "MASSEDA": [6.44607, 1.67593], "AGOME-SEVA": [6.47128, 1.74118], "SEKO": [6.26772, 1.70016], "SEVAME": [6.28883, 1.71649], "AGUIDAGBADE": [9.01812, 1.28117], "BITCHABE": [9.3234, 0.58578], "HALOUKPANBOUNDOU": [8.6968, 1.12122], "SAGBADAI": [8.79889, 1.07017], "BROUNFOUH": [7.73565, 0.67717]};
 </script>
 <script>
+
 
 
 
@@ -1428,6 +1446,38 @@ function drawCatEvoChart(canvasId, chartKey){
   });
 }
 
+/* ===== Filtre par KPI (page Évolution des KPI) ===== */
+let kpiFilterSelection = null; // null = not yet initialised; will default to a readable subset
+function ensureKpiFilterInit(){
+  if(kpiFilterSelection !== null) return;
+  kpiFilterSelection = {};
+  // Default to the first 5 KPI selected so the chart is readable on first load;
+  // "Tout" / "Aucun" buttons and individual chips let the user pick any combination.
+  KPI_ORDER.forEach((code,i)=>{ kpiFilterSelection[code] = i < 5; });
+}
+window.toggleKpiFilter = function(code){
+  ensureKpiFilterInit();
+  kpiFilterSelection[code] = !kpiFilterSelection[code];
+  renderEvolutionExtra();
+};
+window.toggleAllKpiFilter = function(value){
+  ensureKpiFilterInit();
+  KPI_ORDER.forEach(code=> kpiFilterSelection[code] = value);
+  renderEvolutionExtra();
+};
+function renderKpiFilterChips(){
+  const el = document.getElementById('kpiFilterChips');
+  if(!el) return;
+  ensureKpiFilterInit();
+  el.innerHTML = KPI_ORDER.map((code,i)=>{
+    const on = kpiFilterSelection[code];
+    const color = ALLKPI_COLORS[i%ALLKPI_COLORS.length];
+    return `<span class="kpi-chip ${on?'':'off'}" onclick="toggleKpiFilter('${code}')">
+      <span class="dot" style="background:${color}"></span>${code}
+    </span>`;
+  }).join('');
+}
+
 function renderEvolutionExtra(){
   drawCatEvoChart('catEvoChart', 'catEvo');
   drawCatEvoChart('opCatEvoChart', 'opCatEvo');
@@ -1452,15 +1502,19 @@ function renderEvolutionExtra(){
 
   const ctxAK = document.getElementById('kpiAllEvoChart');
   if(ctxAK){
+    renderKpiFilterChips();
+    ensureKpiFilterInit();
     const evo = allKpiEvolutionSeries();
+    const activeCodes = KPI_ORDER.filter(code=> kpiFilterSelection[code]);
     if(charts.kpiAllEvo) charts.kpiAllEvo.destroy();
     charts.kpiAllEvo = new Chart(ctxAK, {
       type:'line',
-      data:{ labels: evo.labels, datasets: KPI_ORDER.map((code,i)=>({
-        label: code, data: evo.series[code], borderColor: ALLKPI_COLORS[i%ALLKPI_COLORS.length],
-        backgroundColor:'transparent', borderWidth:1.5, tension:0.3, pointRadius:1.5,
-        pointBackgroundColor: ALLKPI_COLORS[i%ALLKPI_COLORS.length]
-      })) },
+      data:{ labels: evo.labels, datasets: activeCodes.map((code)=>{
+        const i = KPI_ORDER.indexOf(code);
+        return { label: code, data: evo.series[code], borderColor: ALLKPI_COLORS[i%ALLKPI_COLORS.length],
+          backgroundColor:'transparent', borderWidth:2, tension:0.3, pointRadius:2.5,
+          pointBackgroundColor: ALLKPI_COLORS[i%ALLKPI_COLORS.length] };
+      }) },
       options:{ responsive:true, maintainAspectRatio:false,
         plugins:{legend:{position:'bottom', labels:{font:{size:9.5}, usePointStyle:true, boxWidth:7}},
           tooltip:{callbacks:{label:c=> `${c.dataset.label} (${KPI_REF[c.dataset.label].label}) : ${c.parsed.y!==null? c.parsed.y.toFixed(1)+'%':'—'}`}}},
@@ -2660,6 +2714,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   document.getElementById('closeAlertDetail').addEventListener('click', ()=> adModal.classList.remove('show'));
   adModal.addEventListener('click', e=>{ if(e.target===adModal) adModal.classList.remove('show'); });
 });
+
 
 
 
